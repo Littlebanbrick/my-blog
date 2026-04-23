@@ -3,20 +3,25 @@ import { useState, useEffect } from 'react'
 import myAvatar from '../assets/myAvatar.jpg' // Placeholder avatar image
 
 function ProfileCard() {
-  // Mock data (static for now, will be replaced with API later)
-  const profile = {
-    avatar: myAvatar,
-    name: 'Johnny Wang',
-    motto: 'Be unique, be yourself, be a monster!',
-    location: 'Hangzhou, China',
-    posts: 3,
-    likes: 0,
-    comments: 0
-  }
-
+  // Data for profile cards
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   // State for hitokoto (dynamic quote)
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/profile')
+      .then(res => res.json())
+      .then(data => {
+        setProfile(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch profile:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const fetchQuote = async () => {
     try {
@@ -40,6 +45,11 @@ function ProfileCard() {
     fetchQuote()
   }, [])
 
+  
+  if (loading) {
+    return <div className="card"><div className="card-content">Loading profile...</div></div>;
+  }
+
   return (
     <div className="card widget" data-type="profile">
       <div className="card-content">
@@ -56,7 +66,7 @@ function ProfileCard() {
               <p className="is-size-6 is-block">{profile.motto}</p>
               <p className="is-size-6 is-flex is-justify-content-center">
                 <i
-                    class="fa-solid fa-location-dot mr-1 is-size-7"
+                    className="fa-solid fa-location-dot mr-1 is-size-7"
                     style={{ position: 'relative', top: '5px' }}
                 ></i>
                 <span>{profile.location}</span>
@@ -96,7 +106,7 @@ function ProfileCard() {
         {/* Hitokoto section (click to refresh) */}
         <div>
           <hr />
-          <p id="hitokoto" onClick={fetchQuote} style={{ cursor: 'pointer' }}>
+          <span id="hitokoto" onClick={fetchQuote} style={{ cursor: 'pointer' }}>
             <strong style={{ color: '#000000' }}>{quote.text}</strong>
             {quote.from && (
               <div className="has-text-right">
@@ -108,7 +118,7 @@ function ProfileCard() {
                 Provider: {quote.author}
               </div>
             )}
-          </p>
+          </span>
         </div>
       </div>
     </div>

@@ -12,7 +12,7 @@ function Footer() {
             </p>
           </div>
           <div className="level-right">
-            <a className="button is-small is-text" href="https://github.com/yourusername/your-repo" target="_blank" rel="noopener noreferrer">
+            <a className="button is-small is-text" href="https://github.com/Littlebanbrick/my-blog" target="_blank" rel="noopener noreferrer">
               <i className="fab fa-github mr-1"></i> Source Code
             </a>
           </div>
