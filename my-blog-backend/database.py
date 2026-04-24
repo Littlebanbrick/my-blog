@@ -33,9 +33,20 @@ comments = sqlalchemy.Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("post_id", Integer),                  
-    Column("author", String, default="Anonymous"),   
+    Column("author", String, default="anonymous"),   
     Column("content", Text),                          
     Column("created_at", String),                
+)
+
+# ========== Table of likes  ==========
+likes = sqlalchemy.Table(
+    "likes",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("user_name", String),            # 点赞者昵称（暂时没有用户系统，用昵称标识）
+    Column("post_id", Integer),            
+    Column("created_at", String),         
+    Column("parent_id", Integer, nullable=True),
 )
 
 engine = create_engine(

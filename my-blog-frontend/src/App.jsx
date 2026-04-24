@@ -1,40 +1,21 @@
 // src/App.jsx
-import ProfileCard from './components/LeftWidgets'
-import MomentList from './components/MomentList'
-import RightWidgets from './components/RightWidgets'
+import HomePage from './components/HomePage'
+import PostPage from './components/PostPage'
 import Header from './components/Header'
 import Footer from './components/Footer'
 
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+
 function App() {
   return (
-    <>
+    <BrowserRouter>
       <Header />
-
-      <div className="main-content">
-        <section className="section" style={{ paddingTop: '5rem'}}>
-          <div className="container">
-            <div className="columns">
-              {/* Left column: Profile */}
-              <div className="column is-3">
-                <ProfileCard />
-              </div>
-
-              {/* Middle column: Moments */}
-              <div className="column is-6">
-                <MomentList />
-              </div>
-
-              {/* Right column: Photos, Notes, Projects */}
-              <div className="column is-3">
-                <RightWidgets />
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/post/:id" element={<PostPage />} />
+      </Routes>
       <Footer />
-    </>
+    </BrowserRouter>
   );
 }
 

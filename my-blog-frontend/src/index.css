@@ -6,6 +6,16 @@ body {
   margin: 0;
 }
 
+/* 确保固定导航栏下方内容有足够间距 */
+.has-navbar-fixed-top {
+  padding-top: 5rem !important; /* Bulma 默认值，你可以调到 5.5rem 或 6rem 如果觉得还不够 */
+}
+
+/* 或者直接针对 section 添加 */
+.section.has-navbar-fixed-top {
+  padding-top: 5.5rem;
+}
+
 /* #root 是 React 挂载点，让它撑满并保持列方向 */
 #root {
   display: flex;
