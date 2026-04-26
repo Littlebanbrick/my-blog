@@ -10,6 +10,8 @@ function PostPage() {
   const [likesUsers, setLikesUsers] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');  // only content, no author field
+  const [isLiking, setIsLiking] = useState(false); // Prevent multiple rapid likes
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false); // Prevent multiple comment submissions
 
   // Local like state for immediate UI update
   const [liked, setLiked] = useState(false);
@@ -41,6 +43,9 @@ function PostPage() {
   }, [id]);
 
   const handleLike = () => {
+    if (isLiking) return;
+    setIsLiking(true);
+
     fetch(`http://localhost:8000/api/posts/${id}/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -57,10 +62,14 @@ function PostPage() {
       })
       .then(res => res.json())
       .then(setLikesUsers)
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsLiking(false));
   };
 
   const handleSubmitComment = () => {
+    if (isSubmittingComment) return;
+    setIsSubmittingComment(true);
+
     if (!newComment.trim()) return;
 
     fetch(`http://localhost:8000/api/posts/${id}/comments`, {
@@ -74,7 +83,7 @@ function PostPage() {
       })
       .then(() => {
         setNewComment('');
-        // 刷新评论列表和帖子数据（获取最新的 comment_count）
+        // Refresh comments and post detail (to get updated comment count)
         return Promise.all([
           fetch(`http://localhost:8000/api/posts/${id}/comments`),
           fetch(`http://localhost:8000/api/posts/${id}`)
@@ -85,7 +94,8 @@ function PostPage() {
         setComments(commentsData);
         setPost(postData);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsSubmittingComment(false));
   };
 
   if (!post) return <div className="section"><div className="container">Loading...</div></div>;

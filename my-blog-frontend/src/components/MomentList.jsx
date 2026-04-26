@@ -12,7 +12,7 @@ function MomentList() {
   const [commentsMap, setCommentsMap] = useState({})   // { [postId]: array }
   const [showAllMap, setShowAllMap] = useState({})     // { [postId]: boolean }
   const location = useLocation()
-
+  const [isLiking, setIsLiking] = useState(false) // Avoid multiple rapid likes
 
   useEffect(() => {
     setLoading(true)
@@ -52,6 +52,10 @@ function MomentList() {
   const handleLike = (e, postId) => {
     e.stopPropagation()
     e.preventDefault()
+
+    if(isLiking) return; // Prevent multiple rapid clicks
+    setIsLiking(true);  // Set liking state to prevent multiple clicks
+
     fetch(`http://localhost:8000/api/posts/${postId}/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,14 +63,15 @@ function MomentList() {
     })
       .then(res => res.json())
       .then(data => {
-        // 更新本地点赞状态
+        // Update local like status
         setLikedMap(prev => ({ ...prev, [postId]: data.liked }))
-        // 更新 moments 中的 likes_count
+        // Update likes_count in moments
         setMoments(prev => prev.map(m => 
           m.id === postId ? { ...m, likes_count: data.likes_count } : m
         ))
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsLiking(false)); // Reset liking state
   };
 
   const toggleShowAll = (e, postId) => {
