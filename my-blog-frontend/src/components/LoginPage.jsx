@@ -61,11 +61,8 @@ const LoginPage = () => {
         return;
         }
 
-        // Store token in localStorage for auth requests
-        const bearerToken = `Bearer ${data.token}`;
-        localStorage.setItem("token", bearerToken);
-        setAuthToken(bearerToken);
-        
+        // 只存储纯token
+        setAuthToken(data.token);
         navigate('/');
     } catch (err) {
         if (err.name === 'TypeError' && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {

@@ -1,14 +1,36 @@
 const API_BASE = "http://localhost:8000/api";
 
-function getAuthToken() {
+
+// 获取token（不带Bearer前缀）
+export function getAuthToken() {
   return localStorage.getItem("token") || "";
 }
 
-function getAuthHeaders() {
+// 生成带Bearer前缀的header
+export function getAuthHeaders() {
+  const token = getAuthToken();
   return {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${getAuthToken()}`
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
+}
+
+// 检查token是否过期（JWT）
+export function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return false;
+    return Date.now() / 1000 > payload.exp;
+  } catch {
+    return true;
+  }
+}
+
+// 登出并清理token
+export function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "/login";
 }
 
 export async function loginUser(username, password) {
@@ -30,6 +52,10 @@ export async function registerUser(username, email, password) {
 }
 
 export function setAuthToken(token) {
+  // 只存储纯token，不带Bearer前缀
+  if (token && token.startsWith("Bearer ")) {
+    token = token.replace(/^Bearer\s+/, "");
+  }
   localStorage.setItem("token", token);
 }
 

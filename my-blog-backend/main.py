@@ -113,14 +113,17 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         role: str = payload.get("role")
-        
         if username is None:
             raise credentials_exception
-
         token_data = TokenData(username=username, role=role)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError:
         raise credentials_exception
-
     return token_data
 
 @app.on_event("startup")
@@ -292,6 +295,11 @@ async def admin_delete_post(
 
     return success(data={"deleted_post_id": post_id})
 
+import re
+def is_strong_password(password: str) -> bool:
+    # 至少8位，包含大小写字母、数字、特殊字符
+    return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:\\|,.<>/?]).{8,}$', password))
+
 @app.post("/api/register")
 async def register(user: UserRegister):
     username_exists = await database.fetch_one(
@@ -305,6 +313,9 @@ async def register(user: UserRegister):
     )
     if email_exists:
         raise HTTPException(400, "Email already exists")
+
+    if not is_strong_password(user.password):
+        raise HTTPException(400, "Password must be at least 8 characters and include upper, lower, number, and special char")
 
     hashed_pw = pwd_context.hash(user.password)
     now = get_current_time()
@@ -320,36 +331,37 @@ async def register(user: UserRegister):
     )
     return {"code": 200, "msg": "Register success"}
 
-# 用户登录
+from sqlalchemy import select
 @app.post("/api/login")
-def login(username: str, password: str):
-    # Query the user from the database
-    user = db.query(User).filter(User.username == username).first()
-
-    if not user or not verify_password(password, user.hashed_password):
+async def login(user: UserLogin):
+    # Query the user from the database (async)
+    query = users.select().where(users.c.username == user.username)
+    db_user = await database.fetch_one(query)
+    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-
-    # Generate JWT token with username and role
     access_token = create_access_token(
         data={
-            "sub": user.username,
-            "role": user.role  # "user" or "admin"
+            "sub": db_user["username"],
+            "role": db_user["role"]
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/admin/login")
 async def admin_login(admin: AdminLogin):
     if admin.admin_key != ADMIN_SECRET_KEY:
         raise HTTPException(403, "Invalid admin key")
-
+    # 只允许数据库中role为admin的用户登录
+    query = users.select().where(users.c.role == "admin")
+    db_admin = await database.fetch_one(query)
+    if not db_admin:
+        raise HTTPException(403, "No admin user found in database")
     token = jwt.encode(
-        {"sub": "admin", "role": "admin"},
+        {"sub": db_admin["username"], "role": "admin"},
         JWT_SECRET_KEY, algorithm=ALGORITHM
     )
-    return {"code": 200, "token": token, "username": "admin", "role": "admin"}
+    return {"code": 200, "token": token, "username": db_admin["username"], "role": "admin"}
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
