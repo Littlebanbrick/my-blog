@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
+const API_BASE = 'http://localhost:8000'
 const USER_NAME = "anonymous"  // temporary, until login system is ready
 
 function MomentList() {
@@ -16,19 +17,19 @@ function MomentList() {
 
   useEffect(() => {
     setLoading(true)
-    fetch('http://localhost:8000/api/posts')
+    fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
       .then(async data => {
         setMoments(data)
 
         // Fetch like status and comments for each post
         const statusPromises = data.map(post =>
-          fetch(`http://localhost:8000/api/posts/${post.id}/like_status?user_name=${USER_NAME}`)
+          fetch(`${API_BASE}/api/posts/${post.id}/like_status?user_name=${USER_NAME}`)
             .then(res => res.json())
             .then(s => ({ id: post.id, liked: s.liked }))
         )
         const commentPromises = data.map(post =>
-          fetch(`http://localhost:8000/api/posts/${post.id}/comments`)
+          fetch(`${API_BASE}/api/posts/${post.id}/comments`)
             .then(res => res.json())
             .then(c => ({ id: post.id, comments: c }))
         )
@@ -56,20 +57,26 @@ function MomentList() {
     if(isLiking) return; // Prevent multiple rapid clicks
     setIsLiking(true);  // Set liking state to prevent multiple clicks
 
-    fetch(`http://localhost:8000/api/posts/${postId}/like`, {
+    fetch(`${API_BASE}/api/posts/${postId}/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_name: USER_NAME })
     })
-      .then(res => res.json())
-      .then(data => {
-        // Update local like status
-        setLikedMap(prev => ({ ...prev, [postId]: data.liked }))
-        // Update likes_count in moments
-        setMoments(prev => prev.map(m => 
-          m.id === postId ? { ...m, likes_count: data.likes_count } : m
-        ))
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Unauthorized or failed to like');
+        }
+        return res.json();
       })
+    .then(data => {
+      // Only update if we got a valid response with likes_count
+      if (data?.data?.likes_count === undefined) return;
+
+      setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }));
+      setMoments(prev => prev.map(m => 
+        m.id === postId ? { ...m, likes_count: data.data.likes_count } : m
+      ));
+    })
       .catch(console.error)
       .finally(() => setIsLiking(false)); // Reset liking state
   };

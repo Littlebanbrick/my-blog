@@ -43,10 +43,22 @@ likes = sqlalchemy.Table(
     "likes",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("user_name", String),            # 点赞者昵称（暂时没有用户系统，用昵称标识）
+    Column("user_name", String(50)),            # Username of the liker
     Column("post_id", Integer),            
     Column("created_at", String),         
     Column("parent_id", Integer, nullable=True),
+)
+
+# ========== Table of users  ==========
+users = sqlalchemy.Table(
+    "users",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("username", String(50), unique=True, nullable=False),
+    Column("email", String(100), unique=True, nullable=False),
+    Column("hashed_password", String(255), nullable=False),
+    Column("created_at", String(50), nullable=False),
+    Column("role", String(50), nullable=False, default="user")  # User or admin
 )
 
 engine = create_engine(
