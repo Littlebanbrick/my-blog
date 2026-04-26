@@ -58,7 +58,9 @@ users = sqlalchemy.Table(
     Column("email", String(100), unique=True, nullable=False),
     Column("hashed_password", String(255), nullable=False),
     Column("created_at", String(50), nullable=False),
-    Column("role", String(50), nullable=False, default="user")  # User or admin
+    Column("role", String(50), nullable=False, default="user"),  # User or admin
+    Column("is_verified", Integer, default=0),
+    Column("verify_token", String(255), nullable=True)
 )
 
 engine = create_engine(

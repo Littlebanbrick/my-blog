@@ -28,7 +28,7 @@ const RegisterPage = () => {
       if (res.detail) {
         setError(res.detail);
       } else {
-        navigate('/api/login'); // 注册成功跳转到登录页
+        window.location.href = '/api/login'
       }
     } catch (err) {
       setError('Network error. Please try again later.');

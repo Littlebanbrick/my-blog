@@ -15,6 +15,10 @@ import os
 import uuid
 from dotenv import load_dotenv
 
+# Email verification
+import yagmail
+import secrets
+
 # Login and registration
 from passlib.context import CryptContext
 from jose import jwt, JWTError
@@ -135,6 +139,55 @@ async def get_current_user(request: Request):
         raise credentials_exception
 
     return TokenData(username=username, role=role)
+
+def send_verify_email(to_email: str, token: str):
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_auth_code = os.getenv("SENDER_AUTH_CODE")
+    
+    if not sender_email or not sender_auth_code:
+        print("WARNING: Email credentials not set. Skipping email sending.")
+        return
+    
+    verify_url = f"http://localhost:8000/verify-email?token={token}"
+    
+    yag = yagmail.SMTP(
+        user=sender_email,
+        password=sender_auth_code,
+        host='smtp.163.com',
+        port=465,
+        smtps_ssl=True
+    )
+    
+    subject = "Please verify your email for My Blog"
+    content = f"""
+<div style="max-width:560px; margin:30px auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border:1px solid #eee; border-radius:8px; overflow:hidden;">
+    <div style="padding:28px 32px; background:#333333; text-align:center;">
+        <h2 style="color:#fff; margin:0; font-weight:500; font-size:20px;">Account Activation</h2>
+    </div>
+    <div style="padding:40px 36px; background:#ffffff;">
+        <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 16px 0;">Hello,</p>
+        <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 28px 0;">Please click the button below to activate your blog account.</p>
+        
+        <div style="text-align:center; margin:36px 0;">
+            <a href="{verify_url}" 
+               style="display:inline-block; padding:13px 28px; background:#444444; color:#fff; 
+                      border-radius:6px; text-decoration:none; font-size:15px; font-weight:500;">
+                Activate Account
+            </a>
+        </div>
+
+        <p style="font-size:13px; color:#666; margin-bottom:8px;">If the button doesn't work, copy and open this link:</p>
+        <p style="font-size:13px; color:#555; background:#f7f7f7; padding:12px; border-radius:6px; word-break:break-all;">{verify_url}</p>
+        
+        <p style="font-size:13px; color:#999; margin-top:24px;">This link is valid for 15 minutes.</p>
+    </div>
+    <div style="padding:22px; text-align:center; font-size:12px; color:#aaa; background:#f9f9f9;">
+        This is an automated message, please do not reply.
+    </div>
+</div>
+    """
+    
+    yag.send(to=to_email, subject=subject, contents=content)
 
 @app.on_event("startup")
 async def startup():
@@ -318,34 +371,47 @@ def is_strong_password(password: str) -> bool:
 
 @app.post("/api/register")
 async def register(user: UserRegister):
-    username_exists = await database.fetch_one(
-        users.select().where(users.c.username == user.username)
-    )
+    username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
     if username_exists:
-        raise HTTPException(400, "Username already exists")
+        raise HTTPException(status_code=400, detail="Username already exists")
 
-    email_exists = await database.fetch_one(
-        users.select().where(users.c.email == user.email)
-    )
+    email_exists = await database.fetch_one(users.select().where(users.c.email == user.email))
     if email_exists:
-        raise HTTPException(400, "Email already exists")
+        raise HTTPException(status_code=400, detail="Email already exists")
 
     if not is_strong_password(user.password):
-        raise HTTPException(400, "Password must be at least 8 characters and include upper, lower, number, and special char")
+        raise HTTPException(status_code=400, detail="Password is not strong enough")
 
-    hashed_pw = pwd_context.hash(user.password)
-    now = get_current_time()
+    hashed_pw = get_password_hash(user.password)
+    verify_token = secrets.token_urlsafe(32)
+
+    query = users.insert().values(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_pw,
+        is_verified=False,
+        verify_token=verify_token,
+        created_at=datetime.now(),
+        role="user"
+    )
+
+    await database.execute(query)
+    send_verify_email(user.email, verify_token)
+
+    return {"code": 200, "msg": "Register successful. Please check your email to verify your account."}
+
+@app.get("/api/verify-email")
+async def verify_email(token: str):
+    user = await database.fetch_one(users.select().where(users.c.verify_token == token))
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
 
     await database.execute(
-        users.insert().values(
-            username=user.username,
-            email=user.email,
-            hashed_password=hashed_pw,
-            created_at=now,
-            role="user"
-        )
+        users.update()
+            .where(users.c.verify_token == token)
+            .values(is_verified=True, verify_token=None)
     )
-    return {"code": 200, "msg": "Register success"}
+    return {"msg": "Verification successful! You can now log in."}
 
 @app.post("/api/login")
 async def login(user: UserLogin, response: Response):
@@ -354,6 +420,10 @@ async def login(user: UserLogin, response: Response):
     row = await database.fetch_one(query)
     if not row or not verify_password(user.password, row["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    # 未激活邮箱禁止登录
+    if not row["is_verified"]:
+        raise HTTPException(status_code=400, detail="Please verify your email before login")
 
     access_token = create_access_token(
         data={"sub": row["username"], "role": row["role"]},

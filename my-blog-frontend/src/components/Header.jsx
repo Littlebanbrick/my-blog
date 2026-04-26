@@ -36,7 +36,7 @@ function Header() {
     } finally {
       setUser(null);
       localStorage.removeItem('token'); // 如果你手动存了 token，也一起删掉
-      navigate('/');
+      window.location.href = '/'; // 刷新页面，触发 Header 重新获取用户信息
     }
   };
 

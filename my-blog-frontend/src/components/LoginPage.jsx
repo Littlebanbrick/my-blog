@@ -20,8 +20,7 @@ const LoginPage = () => {
         setError(res.detail);
       } else {
         // 后端已通过 httpOnly cookie 设置 token，前端不再存储 token
-        navigate('/');
-        window.location.reload(); // 刷新页面以更新登录状态
+        window.location.href = '/'; // 登录成功后刷新页面，触发 Header 重新获取用户信息
       }
     } catch (err) {
       setError('Network error. Please try again later.');
@@ -54,8 +53,7 @@ const LoginPage = () => {
       }
 
       // 登录成功，后端已设置 httpOnly cookie，前端无需存 token
-      navigate('/');
-      window.location.reload();
+      window.location.href = '/';
     } catch (err) {
       setError('Network error. Please try again later.');
     } finally {
