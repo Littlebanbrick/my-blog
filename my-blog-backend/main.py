@@ -124,6 +124,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     except JWTError:
         raise credentials_exception
+    
+    # 校验用户仍然存在且角色未变更
+    query = users.select().where(users.c.username == username)
+    db_user = await database.fetch_one(query)
+    if not db_user:
+        raise credentials_exception
+    # 如果 token 中的角色与数据库中的角色不一致，以数据库为准
+    if db_user["role"] != role:
+        token_data = TokenData(username=username, role=db_user["role"])
+    
     return token_data
 
 @app.on_event("startup")
@@ -165,7 +175,9 @@ async def get_post_detail(post_id: int):
     return await database.fetch_one(query)
     
 @app.get("/api/posts/{post_id}/like_status")
-async def get_like_status(post_id: int, user_name: str = "anonymous"):
+async def get_like_status(post_id: int, current_user: TokenData = Depends(get_current_user)):
+    # 只允许查询自己的点赞状态，防止枚举攻击
+    user_name = current_user.username
     # Check if the user has already liked the post
     check_query = likes.select().where(
         and_(
@@ -357,9 +369,10 @@ async def admin_login(admin: AdminLogin):
     db_admin = await database.fetch_one(query)
     if not db_admin:
         raise HTTPException(403, "No admin user found in database")
-    token = jwt.encode(
-        {"sub": db_admin["username"], "role": "admin"},
-        JWT_SECRET_KEY, algorithm=ALGORITHM
+    # 使用统一的 create_access_token，确保 token 带过期时间
+    token = create_access_token(
+        data={"sub": db_admin["username"], "role": "admin"},
+        expires_delta=timedelta(minutes=60)  # 管理员 token 1 小时过期
     )
     return {"code": 200, "token": token, "username": db_admin["username"], "role": "admin"}
 
