@@ -19,6 +19,7 @@ const LoginPage = () => {
       if (res.detail) {
         setError(res.detail);
       } else {
+        // 只存储原始token，不带Bearer
         setAuthToken(res.access_token);
         navigate('/');
       }
@@ -61,7 +62,7 @@ const LoginPage = () => {
         return;
         }
 
-        // 只存储纯token
+        // 只存储原token，不带Bearer
         setAuthToken(data.token);
         navigate('/');
     } catch (err) {

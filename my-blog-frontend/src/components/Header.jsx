@@ -7,15 +7,20 @@ function Header() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
 
+  // 只通过工具函数获取 token，避免直接操作 localStorage
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) setUser(token);
+    import('../utils').then(utils => {
+      const token = utils.getAuthToken();
+      if (token) setUser(token);
+    });
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/');
+    import('../utils').then(utils => {
+      utils.logout();
+      setUser(null);
+      navigate('/');
+    });
   };
 
   return (

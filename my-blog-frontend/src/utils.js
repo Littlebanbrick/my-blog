@@ -52,7 +52,7 @@ export async function registerUser(username, email, password) {
 }
 
 export function setAuthToken(token) {
-  // 只存储纯token，不带Bearer前缀
+  // 只存储原token，不带Bearer前缀
   if (token && token.startsWith("Bearer ")) {
     token = token.replace(/^Bearer\s+/, "");
   }

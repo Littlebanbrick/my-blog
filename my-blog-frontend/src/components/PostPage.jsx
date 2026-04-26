@@ -55,7 +55,18 @@ function PostPage() {
           </div>
         </div>
 
-        <div className="content" style={{ lineHeight: 2 }} dangerouslySetInnerHTML={{ __html: post.preview }} />
+        {/* XSS防护：对HTML内容做消毒 */}
+        {/* 需要先安装 dompurify: npm install dompurify */}
+        {(() => {
+          // 动态引入 DOMPurify，避免 SSR 报错
+          const [sanitized, setSanitized] = useState("");
+          useEffect(() => {
+            import('dompurify').then(DOMPurify => {
+              setSanitized(DOMPurify.default.sanitize(post.preview || ""));
+            });
+          }, [post.preview]);
+          return <div className="content" style={{ lineHeight: 2 }} dangerouslySetInnerHTML={{ __html: sanitized }} />;
+        })()}
 
         <hr />
         <h3 className="title is-4">Comments ({comments.length})</h3>
