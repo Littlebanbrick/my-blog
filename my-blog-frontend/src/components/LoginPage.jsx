@@ -19,9 +19,9 @@ const LoginPage = () => {
       if (res.detail) {
         setError(res.detail);
       } else {
-        // 只存储原始token，不带Bearer
-        setAuthToken(res.access_token);
+        // 后端已通过 httpOnly cookie 设置 token，前端不再存储 token
         navigate('/');
+        window.location.reload(); // 刷新页面以更新登录状态
       }
     } catch (err) {
       setError('Network error. Please try again later.');
@@ -34,46 +34,32 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-        const response = await fetch('http://localhost:8000/api/admin/login', {
+      const response = await fetch('http://localhost:8000/api/admin/login', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ admin_key: adminKey })
-        });
+      });
 
-        if (!response.ok) {
+      if (!response.ok) {
         let errorData;
         try {
-            errorData = await response.json();
+          errorData = await response.json();
         } catch (parseErr) {
-            setError(`Login failed (${response.status}): Invalid response format`);
-            return;
+          setError(`Login failed (${response.status}): Invalid response format`);
+          return;
         }
         setError(errorData.detail || `Admin login failed (${response.status})`);
         return;
-        }
+      }
 
-        let data;
-        try {
-        data = await response.json();
-        } catch (parseErr) {
-        setError('Login succeeded but invalid response format');
-        return;
-        }
-
-        // 只存储原token，不带Bearer
-        setAuthToken(data.token);
-        navigate('/');
+      // 登录成功，后端已设置 httpOnly cookie，前端无需存 token
+      navigate('/');
+      window.location.reload();
     } catch (err) {
-        if (err.name === 'TypeError' && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
-        setError('Network error. Please try again later.');
-        } else {
-        setError(`Login error: ${err.message || 'Unknown error'}`);
-        console.error('Admin login error:', err);
-        }
+      setError('Network error. Please try again later.');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -103,7 +89,7 @@ const LoginPage = () => {
                   </div>
 
                   <div className="field">
-                    <label className="Label">Password</label>
+                    <label className="label">Password</label>
                     <div className="control">
                       <input
                         className="input"

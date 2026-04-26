@@ -1,26 +1,43 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-
+import { getCurrentUser } from '../utils'
 
 function Header() {
   const [isActive, setIsActive] = useState(false)
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
 
-  // 只通过工具函数获取 token，避免直接操作 localStorage
   useEffect(() => {
-    import('../utils').then(utils => {
-      const token = utils.getAuthToken();
-      if (token) setUser(token);
-    });
+    // 之前的做法：从 localStorage 获取 token —— 改为请求后端获取当前用户
+    let mounted = true;
+    getCurrentUser()
+      .then((res) => {
+        if (!mounted) return;
+        if (res && res.data && res.data.username) {
+          setUser(res.data.username);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => setUser(null));
+    return () => { mounted = false; };
   }, []);
 
-  const handleLogout = () => {
-    import('../utils').then(utils => {
-      utils.logout();
+  const handleLogout = async () => {
+    // 调用后端 /api/logout 清除 cookie
+    try {
+      await fetch('http://localhost:8000/api/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (err) {
+      // 忽略错误，仍清本地状态
+      console.error('logout error', err);
+    } finally {
       setUser(null);
+      localStorage.removeItem('token'); // 如果你手动存了 token，也一起删掉
       navigate('/');
-    });
+    }
   };
 
   return (

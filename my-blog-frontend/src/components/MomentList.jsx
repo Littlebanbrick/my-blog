@@ -4,34 +4,36 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 const API_BASE = 'http://localhost:8000'
-const USER_NAME = "anonymous"  // temporary, until login system is ready
 
 function MomentList() {
   const [moments, setMoments] = useState([])
   const [loading, setLoading] = useState(true)
-  const [likedMap, setLikedMap] = useState({})         // { [postId]: boolean }
-  const [commentsMap, setCommentsMap] = useState({})   // { [postId]: array }
-  const [showAllMap, setShowAllMap] = useState({})     // { [postId]: boolean }
+  const [likedMap, setLikedMap] = useState({})
+  const [commentsMap, setCommentsMap] = useState({})
+  const [showAllMap, setShowAllMap] = useState({})
   const location = useLocation()
-  const [isLiking, setIsLiking] = useState(false) // Avoid multiple rapid likes
+  const [isLiking, setIsLiking] = useState(false)
 
   useEffect(() => {
     setLoading(true)
     fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
-      .then(async data => {
+      .then(async res => {
+        const data = res.data || []
         setMoments(data)
 
-        // Fetch like status and comments for each post
         const statusPromises = data.map(post =>
-          fetch(`${API_BASE}/api/posts/${post.id}/like_status?user_name=${USER_NAME}`)
-            .then(res => res.json())
-            .then(s => ({ id: post.id, liked: s.liked }))
+          fetch(`${API_BASE}/api/posts/${post.id}/like_status`, {
+            credentials: 'include'
+          })
+          .then(res => res.json())
+          .then(s => ({ id: post.id, liked: s?.data?.liked || false }))
         )
+
         const commentPromises = data.map(post =>
           fetch(`${API_BASE}/api/posts/${post.id}/comments`)
-            .then(res => res.json())
-            .then(c => ({ id: post.id, comments: c }))
+          .then(res => res.json())
+          .then(c => ({ id: post.id, comments: c.data || c || [] }))
         )
 
         const statuses = await Promise.all(statusPromises)
@@ -44,42 +46,40 @@ function MomentList() {
         commentResults.forEach(r => { newComments[r.id] = r.comments })
         setCommentsMap(newComments)
       })
-      .catch(err => {
-        console.error('Failed to fetch posts:', err)
-      })
+      .catch(err => console.error('Failed to fetch posts:', err))
       .finally(() => setLoading(false))
   }, [location.pathname])
 
-  const handleLike = (e, postId) => {
+  const handleLike = async (e, postId) => {
     e.stopPropagation()
     e.preventDefault()
 
-    if(isLiking) return; // Prevent multiple rapid clicks
-    setIsLiking(true);  // Set liking state to prevent multiple clicks
+    if (isLiking) return
+    setIsLiking(true)
 
-    fetch(`${API_BASE}/api/posts/${postId}/like`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_name: USER_NAME })
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Unauthorized or failed to like');
-        }
-        return res.json();
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({})
       })
-    .then(data => {
-      // Only update if we got a valid response with likes_count
-      if (data?.data?.likes_count === undefined) return;
 
-      setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }));
-      setMoments(prev => prev.map(m => 
-        m.id === postId ? { ...m, likes_count: data.data.likes_count } : m
-      ));
-    })
-      .catch(console.error)
-      .finally(() => setIsLiking(false)); // Reset liking state
-  };
+      const data = await res.json()
+      if (data?.data) {
+        setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }))
+        setMoments(prev =>
+          prev.map(m =>
+            m.id === postId ? { ...m, likes_count: data.data.likes_count } : m
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Like error:', err)
+    } finally {
+      setIsLiking(false)
+    }
+  }
 
   const toggleShowAll = (e, postId) => {
     e.stopPropagation()
@@ -95,8 +95,8 @@ function MomentList() {
     <>
       {moments.map((item) => {
         const isLiked = likedMap[item.id] || false
-        const rawComments = commentsMap[item.id];
-        const comments = Array.isArray(rawComments) ? rawComments : [];
+        const rawComments = commentsMap[item.id]
+        const comments = Array.isArray(rawComments) ? rawComments : []
         const showAll = showAllMap[item.id] || false
         const displayedComments = showAll ? comments : comments.slice(0, 5)
 
@@ -108,13 +108,11 @@ function MomentList() {
             style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}
           >
             <article className="card-content article" role="article">
-              {/* Meta info: date, likes, comments, read time */}
               <div className="article-meta size-small is-uppercase level is-mobile">
                 <div className="level-left">
                   <i className="fa-regular fa-calendar"></i>
                   <span className="ml-1 mr-2">{item.date}</span>
 
-                  {/* Like button & count – stop propagation to prevent navigation */}
                   <span
                     className="icon-text is-align-items-center"
                     style={{ cursor: 'pointer' }}
@@ -122,33 +120,24 @@ function MomentList() {
                   >
                     <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
                        style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
-                    <span className="ml-1">{item.likes_count}</span>
+                    <span className="ml-1">{item.likes_count ?? 0}</span>
                   </span>
 
-                  {/* Comment icon & count – clicking it is fine to navigate (no stopPropagation) */}
                   <span className="commentCountImg ml-3">
                     <i className="fa-regular fa-comment-dots"></i>
-                    <span className="ml-1 commentCount">{item.comment_count}</span>
+                    <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
                   </span>
 
                   <span className="level-item ml-3">
                     <i className="fas fa-pencil-alt"></i>
-                    <span className="ml-1">{item.word_count}</span>
+                    <span className="ml-1">{item.word_count ?? 0}</span>
                   </span>
                 </div>
               </div>
 
-              {/* Title – just text, no inner Link (already wrapped) */}
-              <h1 className="title is-3 is-size-4-mobile">
-                {item.title}
-              </h1>
+              <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
+              <div className="content"><p>{item.preview}</p></div>
 
-              {/* Content preview */}
-              <div className="content">
-                <p>{item.preview}</p>
-              </div>
-
-              {/* Location (optional) */}
               {item.location && (
                 <div className="index-category-tag">
                   <div className="level-item">
@@ -158,7 +147,6 @@ function MomentList() {
                 </div>
               )}
 
-              {/* Inline comments section */}
               {comments.length > 0 && (
                 <div className="comments-inline mt-3">
                   {displayedComments.map(comment => (

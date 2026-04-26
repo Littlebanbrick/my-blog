@@ -4,7 +4,7 @@ main.py
 To run this application, enter `uvicorn main:app --reload --port 8000` in the terminal.
 '''
 
-from fastapi import FastAPI, Body, HTTPException, Depends, status
+from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from database import database, posts, comments, likes, users
@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func, select, and_
 from pydantic import BaseModel, EmailStr
 import os
+import uuid
 from dotenv import load_dotenv
 
 # Login and registration
@@ -33,12 +34,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7   # 7 day
 # Stop server if secret keys are missing
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
     raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.  ")
-
-class LikeRequest(BaseModel):
-    user_name: str
     
 class CommentRequest(BaseModel):
-    author: str
     content: str = Body(..., min_length=1, max_length=1000)  # Ensure content is not empty and constrain its max length
     
 class UserRegister(BaseModel):
@@ -83,7 +80,7 @@ def get_current_time() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 async def check_post_exists(post_id: int) -> bool:
-    query = posts.select().where(posts.c.id == post_id).with_only_columns([posts.c.id])
+    query = posts.select().where(posts.c.id == post_id).with_only_columns(posts.c.id)
     return await database.fetch_one(query) is not None
 
 def get_password_hash(password):
@@ -95,6 +92,8 @@ def verify_password(plain_password: str, hashed_password: str):
 # Generating JWT token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
+    jti = str(uuid.uuid4())
+    to_encode.update({"jti": jti})
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -103,38 +102,39 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(request: Request):
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+
+    if not token:
+        token = request.cookies.get("access_token")
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
+    if not token:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         role: str = payload.get("role")
         if username is None:
             raise credentials_exception
-        token_data = TokenData(username=username, role=role)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     except JWTError:
         raise credentials_exception
-    
-    # 校验用户仍然存在且角色未变更
-    query = users.select().where(users.c.username == username)
-    db_user = await database.fetch_one(query)
-    if not db_user:
+
+    if username == "admin":
+        return TokenData(username=username, role=role)
+
+    user_row = await database.fetch_one(users.select().where(users.c.username == username))
+    if not user_row:
         raise credentials_exception
-    # 如果 token 中的角色与数据库中的角色不一致，以数据库为准
-    if db_user["role"] != role:
-        token_data = TokenData(username=username, role=db_user["role"])
-    
-    return token_data
+
+    return TokenData(username=username, role=role)
 
 @app.on_event("startup")
 async def startup():
@@ -151,7 +151,8 @@ def read_root():
 @app.get("/api/posts")
 async def get_posts():
     query = posts.select()
-    return await database.fetch_all(query)
+    data = await database.fetch_all(query)
+    return success(data=data)
 
 @app.get("/api/profile")
 async def get_profile():
@@ -172,7 +173,8 @@ async def get_profile():
 @app.get("/api/posts/{post_id}")
 async def get_post_detail(post_id: int):
     query = posts.select().where(posts.c.id == post_id)
-    return await database.fetch_one(query)
+    data = await database.fetch_one(query)
+    return success(data=data)
     
 @app.get("/api/posts/{post_id}/like_status")
 async def get_like_status(post_id: int, current_user: TokenData = Depends(get_current_user)):
@@ -194,12 +196,13 @@ async def get_likes(post_id: int):
     rows = await database.fetch_all(query)
     return success(data=[{"user_name": row["user_name"], "created_at": row["created_at"]} for row in rows])
 
+# 移除不需要的 LikeRequest，直接从 token 取用户
 @app.post("/api/posts/{post_id}/like")
 async def toggle_like(
     post_id: int, 
-    req: LikeRequest, 
     current_user: TokenData = Depends(get_current_user)
 ):
+    # 从 token 中获取用户名（绝对安全）
     user_name = current_user.username
 
     if not await check_post_exists(post_id):
@@ -256,7 +259,8 @@ async def toggle_like(
 @app.get("/api/posts/{post_id}/comments")
 async def get_comments(post_id: int):
     query = comments.select().where(comments.c.post_id == post_id).order_by(comments.c.created_at.asc())
-    return await database.fetch_all(query)
+    data = await database.fetch_all(query)
+    return success(data=data)
 
 # Add comment (MUST login)
 @app.post("/api/posts/{post_id}/comments")
@@ -343,38 +347,68 @@ async def register(user: UserRegister):
     )
     return {"code": 200, "msg": "Register success"}
 
-from sqlalchemy import select
 @app.post("/api/login")
-async def login(user: UserLogin):
-    # Query the user from the database (async)
+async def login(user: UserLogin, response: Response):
+    # 使用数据库查询 users 表
     query = users.select().where(users.c.username == user.username)
-    db_user = await database.fetch_one(query)
-    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
+    row = await database.fetch_one(query)
+    if not row or not verify_password(user.password, row["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+
     access_token = create_access_token(
-        data={
-            "sub": db_user["username"],
-            "role": db_user["role"]
-        },
+        data={"sub": row["username"], "role": row["role"]},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    # 在开发环境（localhost）允许 secure=False，生产部署时务必设为 True
+    secure_flag = os.getenv("ENV", "development") == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=secure_flag,        # production: True
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+
+    # 兼容旧客户端：仍返回 token 在 JSON（可选）；前端默认不再存储
+    return {"code": 200, "access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/admin/login")
-async def admin_login(admin: AdminLogin):
+async def admin_login(admin: AdminLogin, response: Response):
     if admin.admin_key != ADMIN_SECRET_KEY:
-        raise HTTPException(403, "Invalid admin key")
-    # 只允许数据库中role为admin的用户登录
-    query = users.select().where(users.c.role == "admin")
-    db_admin = await database.fetch_one(query)
-    if not db_admin:
-        raise HTTPException(403, "No admin user found in database")
-    # 使用统一的 create_access_token，确保 token 带过期时间
+        raise HTTPException(status_code=403, detail="Invalid admin key")
+
     token = create_access_token(
-        data={"sub": db_admin["username"], "role": "admin"},
-        expires_delta=timedelta(minutes=60)  # 管理员 token 1 小时过期
+        data={"sub": "admin", "role": "admin"},
+        expires_delta=timedelta(hours=1)
     )
-    return {"code": 200, "token": token, "username": db_admin["username"], "role": "admin"}
+
+    secure_flag = os.getenv("ENV", "development") == "production"
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=secure_flag,
+        samesite="Lax",
+        max_age=60 * 60 * 10,  # 10 hour
+        path="/"
+    )
+
+    return {"code": 200, "token": token, "username": "admin", "role": "admin"}
+
+# Logout by clearing the cookie
+@app.post("/api/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/")
+    return {"code": 200, "msg": "Logged out"}
+
+@app.get("/api/me")
+async def me(current_user: TokenData = Depends(get_current_user)):
+    # current_user 是 TokenData(username, role)
+    return success(data={"username": current_user.username, "role": current_user.role})
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
