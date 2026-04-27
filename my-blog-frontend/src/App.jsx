@@ -11,6 +11,9 @@ import ProfilePage from './components/ProfilePage'
 import CreatePostPage from './components/CreatePostPage'
 import ArchivesPage from './components/ArchivesPage'
 import PhotographyPage from './components/PhotographyPage'
+import StudyNotesPage from './components/StudyNotesPage'
+import NotePage from './components/NotePage'
+import ProjectsPage from './components/ProjectsPage'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -29,6 +32,9 @@ function App() {
         <Route path="/create-post" element={<CreatePostPage />} />
         <Route path="/archives" element={<ArchivesPage />} />
         <Route path="/photography" element={<PhotographyPage />} />
+        <Route path="/study-notes" element={<StudyNotesPage />} />
+        <Route path="/study-notes/:id" element={<NotePage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>
