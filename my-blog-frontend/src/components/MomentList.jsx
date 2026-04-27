@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { getCurrentUser } from '../utils'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -13,6 +14,44 @@ function MomentList() {
   const [showAllMap, setShowAllMap] = useState({})
   const location = useLocation()
   const [isLiking, setIsLiking] = useState(false)
+
+  const handlePostRightClick = async (e, postId) => {
+    e.preventDefault();
+
+    const userRes = await getCurrentUser();
+    if(userRes.data?.role !== 'admin') return;
+
+    if(!window.confirm('Confirm to delete this post?')) return;
+
+    try {
+      await fetch(`${API_BASE}/api/admin/posts/${postId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+    }
+  };
+
+  const handleCommentRightClick = async (e, commentId) => {
+    e.preventDefault();
+
+    const userRes = await getCurrentUser();
+    if(userRes.data?.role !== 'admin') return;
+
+    if(!window.confirm('Confirm to delete this comment?')) return;
+
+    try {
+      await fetch(`${API_BASE}/api/admin/comments/${commentId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
 
   useEffect(() => {
     setLoading(true)
@@ -81,6 +120,32 @@ function MomentList() {
     }
   }
 
+  // When the admin right click the post card, ask if delete the post
+  const handleRightClick = async (e, postId) => {
+    e.preventDefault()
+    
+    const userRes = await getCurrentUser();
+    if(userRes?.data?.role !== 'admin') return;
+
+    if (!window.confirm('Confirm to delete this post?')) {
+      await fetch(`${API_BASE}/api/posts/${postId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      window.location.reload();
+    }
+  };
+
+  // When the admin click the comment, ask if delete the comment
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('⚠️ Delete this comment?')) return;
+    await fetch(`${API_BASE}/admin/comments/${commentId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    window.location.reload();
+  };
+
   const toggleShowAll = (e, postId) => {
     e.stopPropagation()
     e.preventDefault()
@@ -106,6 +171,7 @@ function MomentList() {
             to={`/post/${item.id}`}
             key={item.id}
             style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}
+            onContextMenu={(e) => handlePostRightClick(e, item.id)}
           >
             <article className="card-content article" role="article">
               <div className="article-meta size-small is-uppercase level is-mobile">
@@ -150,7 +216,12 @@ function MomentList() {
               {comments.length > 0 && (
                 <div className="comments-inline mt-3">
                   {displayedComments.map(comment => (
-                    <div key={comment.id} className="media" style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}>
+                    <div 
+                      key={comment.id} 
+                      className="media" 
+                      style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                      onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
+                    >
                       <div className="media-content">
                         <strong className="mr-2">{comment.author}:</strong>
                         <span><i>{comment.content}</i></span>

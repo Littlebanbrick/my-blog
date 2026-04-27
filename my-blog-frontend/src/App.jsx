@@ -7,6 +7,8 @@ import LoginPage from './components/LoginPage'
 import RegisterPage from './components/RegisterPage'
 import VerifyEmail from './components/VerifyEmail'
 import WaitVerification from './components/WaitVerification'
+import ProfilePage from './components/ProfilePage'
+import CreatePostPage from './components/CreatePostPage'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -21,6 +23,8 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/wait-verification" element={<WaitVerification />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/create-post" element={<CreatePostPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>

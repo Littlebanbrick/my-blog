@@ -79,6 +79,17 @@ function PostPage() {
     }
   };
 
+  // When the admin right click the post, ask if delete the post
+  const handleRightClick = async (e, postId) => {
+    e.preventDefault();
+    if (!window.confirm('Confirm to delete this post?')) return;
+    await fetch(`${API_BASE}/admin/posts/${postId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    window.location.reload();
+  };
+
   if (!post) {
     return (
       <div className="section">
@@ -121,7 +132,16 @@ function PostPage() {
         <hr />
         <h3 className="title is-4">Comments ({comments.length})</h3>
         {comments.map(c => (
-          <div key={c.id} className="box">
+          <div 
+            key={c.id} 
+            className="box"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              getCurrentUser().then(res => {
+                if(res.data?.role === "admin") handleDeleteComment(c.id);
+              });
+            }}
+          >
             <strong>{c.author}</strong>
             <p className="mt-1">{c.content}</p>
           </div>

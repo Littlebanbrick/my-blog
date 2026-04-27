@@ -14,7 +14,7 @@ function Header() {
       .then((res) => {
         if (!mounted) return;
         if (res && res.data && res.data.username) {
-          setUser(res.data.username);
+          setUser(res.data);
         } else {
           setUser(null);
         }
@@ -85,7 +85,10 @@ function Header() {
             ) : (
               <div className="navbar-item">
                 <div className="buttons">
-                  <button className="button is-light is-small" disabled>Logged in</button>
+                  {user.role === 'admin' && (
+                    <Link to="/create-post" className="button is-primary is-small">Create Post</Link>
+                  )}
+                  <Link to="/profile" className="button is-light is-small">{user.username}</Link>
                   <button className="button is-dark is-small" onClick={handleLogout}>Logout</button>
                 </div>
               </div>

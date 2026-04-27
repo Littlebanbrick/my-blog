@@ -39,7 +39,7 @@ function WaitVerification() {
               <div className="card-content" style={{ textAlign: "center", padding: "3rem" }}>
                 <h1 className="title is-4">Registration Successful</h1>
                 <p className="has-text-grey-dark">
-                  Please check your email and click the activation link.
+                  Please check your email to activate your account.
                 </p>
                 <p className="has-text-grey mt-2">{status}</p>
               </div>
