@@ -371,34 +371,43 @@ def is_strong_password(password: str) -> bool:
 
 @app.post("/api/register")
 async def register(user: UserRegister):
-    username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
-    if username_exists:
-        raise HTTPException(status_code=400, detail="Username already exists")
+    try:
+        username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
+        if username_exists:
+            return {"code": 400, "msg": "Username already exists"}
 
-    email_exists = await database.fetch_one(users.select().where(users.c.email == user.email))
-    if email_exists:
-        raise HTTPException(status_code=400, detail="Email already exists")
+        email_exists = await database.fetch_one(users.select().where(users.c.email == user.email))
+        if email_exists:
+            return {"code": 400, "msg": "Email already exists"}
 
-    if not is_strong_password(user.password):
-        raise HTTPException(status_code=400, detail="Password is not strong enough")
+        if not is_strong_password(user.password):
+            return {"code": 400, "msg": "Password is too weak"}
 
-    hashed_pw = get_password_hash(user.password)
-    verify_token = secrets.token_urlsafe(32)
+        hashed_pw = get_password_hash(user.password)
+        verify_token = secrets.token_urlsafe(32)
 
-    query = users.insert().values(
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed_pw,
-        is_verified=False,
-        verify_token=verify_token,
-        created_at=datetime.now(),
-        role="user"
-    )
+        query = users.insert().values(
+            username=user.username,
+            email=user.email,
+            hashed_password=hashed_pw,
+            is_verified=False,
+            verify_token=verify_token,
+            created_at=datetime.now(),
+            role="user"
+        )
+        await database.execute(query)
 
-    await database.execute(query)
-    send_verify_email(user.email, verify_token)
+        try:
+            send_verify_email(user.email, verify_token)
+        except:
+            return {"code": 200, "msg": "Registered, but failed to send verification email"}
 
-    return {"code": 200, "msg": "Register successful. Please check your email to verify your account."}
+        return {"code": 200, "msg": "Registered successfully, please verify your email"}
+
+    except HTTPException as he:
+        return {"code": he.status_code, "msg": he.detail}
+    except Exception as e:
+        return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
 @app.get("/api/verify-email")
 async def verify_email(token: str):
@@ -415,59 +424,71 @@ async def verify_email(token: str):
 
 @app.post("/api/login")
 async def login(user: UserLogin, response: Response):
-    # 使用数据库查询 users 表
-    query = users.select().where(users.c.username == user.username)
-    row = await database.fetch_one(query)
-    if not row or not verify_password(user.password, row["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    try:
+        # 使用数据库查询 users 表
+        query = users.select().where(users.c.username == user.username)
+        row = await database.fetch_one(query)
+        if not row or not verify_password(user.password, row["hashed_password"]):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    # 未激活邮箱禁止登录
-    if not row["is_verified"]:
-        raise HTTPException(status_code=400, detail="Please verify your email before login")
+        # 未激活邮箱禁止登录
+        if not row["is_verified"]:
+            raise HTTPException(status_code=400, detail="Please verify your email before login")
 
-    access_token = create_access_token(
-        data={"sub": row["username"], "role": row["role"]},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+        access_token = create_access_token(
+            data={"sub": row["username"], "role": row["role"]},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
 
-    # 在开发环境（localhost）允许 secure=False，生产部署时务必设为 True
-    secure_flag = os.getenv("ENV", "development") == "production"
+        # 在开发环境（localhost）允许 secure=False，生产部署时务必设为 True
+        secure_flag = os.getenv("ENV", "development") == "production"
 
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=secure_flag,        # production: True
-        samesite="Lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/"
-    )
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=secure_flag,        # production: True
+            samesite="Lax",
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            path="/"
+        )
 
-    # 兼容旧客户端：仍返回 token 在 JSON（可选）；前端默认不再存储
-    return {"code": 200, "access_token": access_token, "token_type": "bearer"}
+        # 兼容旧客户端：仍返回 token 在 JSON（可选）；前端默认不再存储
+        return {"code": 200, "access_token": access_token, "token_type": "bearer"}
+
+    except HTTPException as he:
+        return {"code": he.status_code, "msg": he.detail}
+    except Exception as e:
+        return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
 @app.post("/api/admin/login")
 async def admin_login(admin: AdminLogin, response: Response):
-    if admin.admin_key != ADMIN_SECRET_KEY:
-        raise HTTPException(status_code=403, detail="Invalid admin key")
+    try:
+        if admin.admin_key != ADMIN_SECRET_KEY:
+            raise HTTPException(status_code=403, detail="Invalid admin key")
 
-    token = create_access_token(
-        data={"sub": "admin", "role": "admin"},
-        expires_delta=timedelta(hours=1)
-    )
+        token = create_access_token(
+            data={"sub": "admin", "role": "admin"},
+            expires_delta=timedelta(hours=1)
+        )
 
-    secure_flag = os.getenv("ENV", "development") == "production"
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,
-        secure=secure_flag,
-        samesite="Lax",
-        max_age=60 * 60 * 10,  # 10 hour
-        path="/"
-    )
+        secure_flag = os.getenv("ENV", "development") == "production"
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=secure_flag,
+            samesite="Lax",
+            max_age=60 * 60 * 10,  # 10 hour
+            path="/"
+        )
 
-    return {"code": 200, "token": token, "username": "admin", "role": "admin"}
+        return {"code": 200, "token": token, "username": "admin", "role": "admin"}
+    
+    except HTTPException as he:
+        return {"code": he.status_code, "msg": he.detail}
+    except Exception as e:
+        return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
 # Logout by clearing the cookie
 @app.post("/api/logout")
