@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { toggleLike, getComments, addComment } from '../utils';
+import { getComments, getCurrentUser, addComment } from '../utils';
 import DOMPurify from 'dompurify';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -10,8 +10,9 @@ function PostPage() {
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
-  const [isLiked, setIsLiked] = useState(false); // Like status for this post
+  const [isLiked, setIsLiked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [likesUsers, setLikesUsers] = useState([]);
 
   useEffect(() => {
     fetch(`${API_BASE}/me`, { credentials: "include" })
@@ -26,7 +27,6 @@ function PostPage() {
         setPost(res.data || null);
       });
 
-    // Get current like status
     fetch(`${API_BASE}/posts/${id}/like_status`, {
       credentials: 'include'
     })
@@ -34,6 +34,13 @@ function PostPage() {
     .then(res => {
       setIsLiked(res?.data?.liked || false);
     });
+
+    // Get likers
+    fetch(`${API_BASE}/posts/${id}/likes`)
+      .then(r => r.json())
+      .then(res => {
+        setLikesUsers(res.data || []);
+      });
 
     getComments(id).then(res => {
       setComments(res.data || res || []);
@@ -44,16 +51,17 @@ function PostPage() {
     try {
       const res = await fetch(`${API_BASE}/posts/${id}/like`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (data?.data) {
         setPost({ ...post, likes_count: data.data.likes_count });
-        setIsLiked(data.data.liked); // Change the icon based on like status
+        setIsLiked(data.data.liked);
+        // Refresh likes users list after like/unlike
+        fetch(`${API_BASE}/posts/${id}/likes`)
+          .then(r => r.json())
+          .then(res => setLikesUsers(res.data || []));
       }
     } catch (error) {
       console.log("Please login to like the post.");
@@ -71,23 +79,21 @@ function PostPage() {
         body: JSON.stringify({ content: newComment })
       });
       setNewComment("");
-      getComments(id).then(res => {
-        setComments(res.data || []);
-      });
+      getComments(id).then(res => setComments(res.data || []));
     } catch (error) {
       console.log("Failed to submit comment", error);
     }
   };
 
-  // When the admin right click the post, ask if delete the post
-  const handleRightClick = async (e, postId) => {
-    e.preventDefault();
-    if (!window.confirm('Confirm to delete this post?')) return;
-    await fetch(`${API_BASE}/admin/posts/${postId}`, {
+  // Delete comment (admin right-click)
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return;
+    await fetch(`${API_BASE}/admin/comments/${commentId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
-    window.location.reload();
+    // Reload comments after deletion
+    getComments(id).then(res => setComments(res.data || []));
   };
 
   if (!post) {
@@ -111,14 +117,13 @@ function PostPage() {
               style={{ cursor: 'pointer' }}
               onClick={handleLike}
             >
-              {/* Change the icon based on like status */}
-            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <i
-                className={isLiked ? 'fas fa-heart' : 'fa-regular fa-heart'}
-                style={{ color: isLiked ? '#e0245e' : 'inherit' }}
-              ></i>
-              <span className="ml-1">{post.likes_count ?? 0}</span>
-            </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <i
+                  className={isLiked ? 'fas fa-heart' : 'fa-regular fa-heart'}
+                  style={{ color: isLiked ? '#e0245e' : 'inherit' }}
+                ></i>
+                <span className="ml-1">{post.likes_count ?? 0}</span>
+              </span>
             </span>
           </div>
         </div>
@@ -126,8 +131,17 @@ function PostPage() {
         <div
           className="content"
           style={{ lineHeight: 2 }}
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.preview || "") }}
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize((post.preview || "").replace(/\n/g, '<br>'))
+          }}
         />
+
+        {/* Liker list */}
+        {likesUsers.length > 0 && (
+          <div className="mt-3">
+            <small className="has-text-grey">Liked by: {likesUsers.map(u => u.user_name).join(', ')}</small>
+          </div>
+        )}
 
         <hr />
         <h3 className="title is-4">Comments ({comments.length})</h3>
@@ -137,13 +151,14 @@ function PostPage() {
             className="box"
             onContextMenu={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               getCurrentUser().then(res => {
-                if(res.data?.role === "admin") handleDeleteComment(c.id);
+                if (res.data?.role === "admin") handleDeleteComment(c.id);
               });
             }}
           >
             <strong>{c.author}</strong>
-            <p className="mt-1">{c.content}</p>
+            <p className="mt-1" >{c.content}</p>
           </div>
         ))}
 
@@ -151,6 +166,7 @@ function PostPage() {
           className="textarea"
           value={newComment}
           onChange={e => setNewComment(e.target.value)}
+          placeholder="Write a comment..."
         />
         <button className="button is-dark mt-4" onClick={handleSubmitComment}>
           Submit Comment

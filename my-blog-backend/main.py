@@ -62,7 +62,7 @@ class TokenData(BaseModel):
 class PostCreate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
     preview: str = Body(..., min_length=1)  # a.k.a. content
-    location: str = Body(..., min_length=1, max_length=100)
+    location: str = Body(..., max_length=100) # location can be empty but not null
 
 app.add_middleware(
     CORSMiddleware,
@@ -253,7 +253,7 @@ async def get_like_status(post_id: int, current_user: TokenData = Depends(get_cu
 
 @app.get("/api/posts/{post_id}/likes")
 async def get_likes(post_id: int):
-    query = likes.select().where(likes.c.post_id == post_id).order_by(likes.c.created_at.asc())
+    query = likes.select().where(likes.c.post_id == post_id).order_by(likes.c.created_at.desc())
     rows = await database.fetch_all(query)
     return success(data=[{"user_name": row["user_name"], "created_at": row["created_at"]} for row in rows])
 
@@ -554,12 +554,40 @@ async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
 async def delete_user(current_user: TokenData = Depends(get_current_user)):
     if current_user.role == "admin":
         return fail(msg="Admin cannot be deleted", code=403)
-    
+
     async with database.transaction():
+        # 1. 修复点赞计数：先查出该用户点过赞的帖子，减少对应 likes_count
+        user_likes = await database.fetch_all(
+            likes.select().where(likes.c.user_name == current_user.username)
+        )
+        for like in user_likes:
+            await database.execute(
+                posts.update().where(posts.c.id == like["post_id"]).values(
+                    likes_count=posts.c.likes_count - 1
+                )
+            )
+        # 删除点赞记录
         await database.execute(likes.delete().where(likes.c.user_name == current_user.username))
+
+        # 2. 修复评论计数：查出该用户的所有评论，减少对应帖子的 comment_count
+        user_comments = await database.fetch_all(
+            comments.select().where(comments.c.author == current_user.username)
+        )
+        # 确定每个帖子需要减少的评论数
+        from collections import Counter
+        post_comment_counts = Counter(c["post_id"] for c in user_comments)
+        for post_id, count in post_comment_counts.items():
+            await database.execute(
+                posts.update().where(posts.c.id == post_id).values(
+                    comment_count=posts.c.comment_count - count
+                )
+            )
+        # 删除评论记录
         await database.execute(comments.delete().where(comments.c.author == current_user.username))
+
+        # 3. 删除用户
         await database.execute(users.delete().where(users.c.username == current_user.username))
-    
+
     response = JSONResponse(content=success(msg="Account deleted successfully"))
     response.delete_cookie("access_token", path="/")
     return response

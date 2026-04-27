@@ -15,13 +15,13 @@ function MomentList() {
   const location = useLocation()
   const [isLiking, setIsLiking] = useState(false)
 
+  // Delete post (admin right-click)
   const handlePostRightClick = async (e, postId) => {
     e.preventDefault();
-
     const userRes = await getCurrentUser();
-    if(userRes.data?.role !== 'admin') return;
+    if (userRes.data?.role !== 'admin') return;
 
-    if(!window.confirm('Confirm to delete this post?')) return;
+    if (!window.confirm('Confirm to delete this post?')) return;
 
     try {
       await fetch(`${API_BASE}/api/admin/posts/${postId}`, {
@@ -34,13 +34,14 @@ function MomentList() {
     }
   };
 
+  // Delete comment (admin right-click)
   const handleCommentRightClick = async (e, commentId) => {
     e.preventDefault();
-
+    e.stopPropagation();
     const userRes = await getCurrentUser();
-    if(userRes.data?.role !== 'admin') return;
+    if (userRes.data?.role !== 'admin') return;
 
-    if(!window.confirm('Confirm to delete this comment?')) return;
+    if (!window.confirm('Confirm to delete this comment?')) return;
 
     try {
       await fetch(`${API_BASE}/api/admin/comments/${commentId}`, {
@@ -101,9 +102,7 @@ function MomentList() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({})
       })
-
       const data = await res.json()
       if (data?.data) {
         setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }))
@@ -119,32 +118,6 @@ function MomentList() {
       setIsLiking(false)
     }
   }
-
-  // When the admin right click the post card, ask if delete the post
-  const handleRightClick = async (e, postId) => {
-    e.preventDefault()
-    
-    const userRes = await getCurrentUser();
-    if(userRes?.data?.role !== 'admin') return;
-
-    if (!window.confirm('Confirm to delete this post?')) {
-      await fetch(`${API_BASE}/api/posts/${postId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      window.location.reload();
-    }
-  };
-
-  // When the admin click the comment, ask if delete the comment
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('⚠️ Delete this comment?')) return;
-    await fetch(`${API_BASE}/admin/comments/${commentId}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-    window.location.reload();
-  };
 
   const toggleShowAll = (e, postId) => {
     e.stopPropagation()
@@ -202,7 +175,7 @@ function MomentList() {
               </div>
 
               <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
-              <div className="content"><p>{item.preview}</p></div>
+              <div className="content"><p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p></div>
 
               {item.location && (
                 <div className="index-category-tag">

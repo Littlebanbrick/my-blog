@@ -86,7 +86,7 @@ function Header() {
               <div className="navbar-item">
                 <div className="buttons">
                   {user.role === 'admin' && (
-                    <Link to="/create-post" className="button is-primary is-small">Create Post</Link>
+                    <Link to="/create-post" className="button is-dark is-small">Create Post</Link>
                   )}
                   <Link to="/profile" className="button is-light is-small">{user.username}</Link>
                   <button className="button is-dark is-small" onClick={handleLogout}>Logout</button>
