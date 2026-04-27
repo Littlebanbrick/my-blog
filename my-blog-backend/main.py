@@ -8,7 +8,7 @@ from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Resp
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from database import database, posts, comments, likes, users
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy import func, select, and_
 from pydantic import BaseModel, EmailStr
 import os
@@ -24,43 +24,44 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 
+# Password strength validation
+import bcrypt
+
 app = FastAPI()
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7   # 7 day
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
-# Stop server if secret keys are missing
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
-    raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.  ")
-    
+    raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.")
+
 class CommentRequest(BaseModel):
-    content: str = Body(..., min_length=1, max_length=1000)  # Ensure content is not empty and constrain its max length
-    
+    content: str = Body(..., min_length=1, max_length=1000)
+
 class UserRegister(BaseModel):
-    username: str = Body(..., min_length=3, max_length=50)  # Username constraints
+    username: str = Body(..., min_length=3, max_length=50)
     email: EmailStr
-    password: str = Body(..., min_length=8)  # Password must be at least 8 characters long
-    
+    password: str = Body(..., min_length=8)
+
 class UserLogin(BaseModel):
     username: str
     password: str
-    
+
 class AdminLogin(BaseModel):
     admin_key: str
-    
+
 class TokenData(BaseModel):
     username: str | None = None
     role: str | None = None
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],    # Frontend URL
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,7 +73,7 @@ def success(data=None, msg="Success"):
         "msg": msg,
         "data": data
     }
-    
+
 def fail(msg="Error", code=400):
     return {
         "code": code,
@@ -88,12 +89,12 @@ async def check_post_exists(post_id: int) -> bool:
     return await database.fetch_one(query) is not None
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8')[:72], salt).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str):
-    return pwd_context.verify(plain_password, hashed_password)
-
-# Generating JWT token
+    return bcrypt.checkpw(plain_password.encode('utf-8')[:72], hashed_password.encode('utf-8'))
+    
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     jti = str(uuid.uuid4())
@@ -141,53 +142,57 @@ async def get_current_user(request: Request):
     return TokenData(username=username, role=role)
 
 def send_verify_email(to_email: str, token: str):
-    sender_email = os.getenv("SENDER_EMAIL")
-    sender_auth_code = os.getenv("SENDER_AUTH_CODE")
-    
-    if not sender_email or not sender_auth_code:
-        print("WARNING: Email credentials not set. Skipping email sending.")
-        return
-    
-    verify_url = f"http://localhost:8000/verify-email?token={token}"
-    
-    yag = yagmail.SMTP(
-        user=sender_email,
-        password=sender_auth_code,
-        host='smtp.163.com',
-        port=465,
-        smtps_ssl=True
-    )
-    
-    subject = "Please verify your email for My Blog"
-    content = f"""
-<div style="max-width:560px; margin:30px auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border:1px solid #eee; border-radius:8px; overflow:hidden;">
-    <div style="padding:28px 32px; background:#333333; text-align:center;">
-        <h2 style="color:#fff; margin:0; font-weight:500; font-size:20px;">Account Activation</h2>
-    </div>
-    <div style="padding:40px 36px; background:#ffffff;">
-        <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 16px 0;">Hello,</p>
-        <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 28px 0;">Please click the button below to activate your blog account.</p>
-        
-        <div style="text-align:center; margin:36px 0;">
-            <a href="{verify_url}" 
-               style="display:inline-block; padding:13px 28px; background:#444444; color:#fff; 
-                      border-radius:6px; text-decoration:none; font-size:15px; font-weight:500;">
-                Activate Account
-            </a>
-        </div>
+    try:
+        sender_email = os.getenv("SENDER_EMAIL")
+        sender_auth_code = os.getenv("SENDER_AUTH_CODE")
 
-        <p style="font-size:13px; color:#666; margin-bottom:8px;">If the button doesn't work, copy and open this link:</p>
-        <p style="font-size:13px; color:#555; background:#f7f7f7; padding:12px; border-radius:6px; word-break:break-all;">{verify_url}</p>
-        
-        <p style="font-size:13px; color:#999; margin-top:24px;">This link is valid for 15 minutes.</p>
-    </div>
-    <div style="padding:22px; text-align:center; font-size:12px; color:#aaa; background:#f9f9f9;">
-        This is an automated message, please do not reply.
-    </div>
-</div>
-    """
-    
-    yag.send(to=to_email, subject=subject, contents=content)
+        if not sender_email or not sender_auth_code:
+            print("WARNING: Email credentials not set. Skipping email sending.")
+            return
+
+        verify_url = f"http://localhost:5173/verify-email?token={token}"
+
+        yag = yagmail.SMTP(
+            user=sender_email,
+            password=sender_auth_code,
+            host='smtp.163.com',
+            port=465,
+            smtp_ssl=True
+        )
+
+        subject = "Please verify your email for My Blog"
+        content = f"""
+        <div style="max-width:560px; margin:30px auto; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border:1px solid #eee; border-radius:8px; overflow:hidden;">
+            <div style="padding:28px 32px; background:#333333; text-align:center;">
+                <h2 style="color:#fff; margin:0; font-weight:500; font-size:20px;">Account Activation</h2>
+            </div>
+            <div style="padding:40px 36px; background:#ffffff;">
+                <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 16px 0;">Hello,</p>
+                <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 28px 0;">Please click the button below to activate your blog account.</p>
+                
+                <div style="text-align:center; margin:36px 0;">
+                    <a href="{verify_url}" style="display:inline-block; padding:13px 28px; background:#444444; color:#fff; border-radius:6px; text-decoration:none; font-size:15px; font-weight:500;">
+                        Activate Account
+                    </a>
+                </div>
+
+                <p style="font-size:13px; color:#666; margin-bottom:8px;">If the button doesn't work, copy and open this link:</p>
+                <p style="font-size:13px; color:#555; background:#f7f7f7; padding:12px; border-radius:6px; word-break:break-all;">{verify_url}</p>
+                
+                <p style="font-size:13px; color:#999; margin-top:24px;">This link is valid for 15 minutes.</p>
+            </div>
+            <div style="padding:22px; text-align:center; font-size:12px; color:#aaa; background:#f9f9f9;">
+                This is an automated message, please do not reply.
+            </div>
+        </div>
+        """
+
+        yag.send(to=to_email, subject=subject, contents=content)
+        print("Verification email sent to", to_email)
+
+    except Exception as e:
+        print("Failed to send verification email:", str(e))
+
 
 @app.on_event("startup")
 async def startup():
@@ -222,18 +227,16 @@ async def get_profile():
         "likes": total_likes,
         "comments": total_comments
     }
-    
+
 @app.get("/api/posts/{post_id}")
 async def get_post_detail(post_id: int):
     query = posts.select().where(posts.c.id == post_id)
     data = await database.fetch_one(query)
     return success(data=data)
-    
+
 @app.get("/api/posts/{post_id}/like_status")
 async def get_like_status(post_id: int, current_user: TokenData = Depends(get_current_user)):
-    # 只允许查询自己的点赞状态，防止枚举攻击
     user_name = current_user.username
-    # Check if the user has already liked the post
     check_query = likes.select().where(
         and_(
             likes.c.post_id == post_id,
@@ -249,18 +252,16 @@ async def get_likes(post_id: int):
     rows = await database.fetch_all(query)
     return success(data=[{"user_name": row["user_name"], "created_at": row["created_at"]} for row in rows])
 
-# 移除不需要的 LikeRequest，直接从 token 取用户
 @app.post("/api/posts/{post_id}/like")
 async def toggle_like(
-    post_id: int, 
+    post_id: int,
     current_user: TokenData = Depends(get_current_user)
 ):
-    # 从 token 中获取用户名（绝对安全）
     user_name = current_user.username
 
     if not await check_post_exists(post_id):
         return fail(msg=f"Post {post_id} does not exist", code=404)
-    
+
     check_query = likes.select().where(
         and_(
             likes.c.post_id == post_id,
@@ -270,7 +271,7 @@ async def toggle_like(
 
     async with database.transaction():
         existing = await database.fetch_one(check_query)
-        
+
         if existing:
             delete_query = likes.delete().where(likes.c.id == existing["id"])
             await database.execute(delete_query)
@@ -307,22 +308,19 @@ async def toggle_like(
         "likes_count": new_likes_count,
         "likers": likers
     })
-    
-# Get comments (no auth required)
+
 @app.get("/api/posts/{post_id}/comments")
 async def get_comments(post_id: int):
     query = comments.select().where(comments.c.post_id == post_id).order_by(comments.c.created_at.asc())
     data = await database.fetch_all(query)
     return success(data=data)
 
-# Add comment (MUST login)
 @app.post("/api/posts/{post_id}/comments")
 async def add_comment(
     post_id: int,
     req: CommentRequest,
     current_user: TokenData = Depends(get_current_user)
 ):
-    # Get username from token (cannot be faked)
     author = current_user.username
 
     now = get_current_time()
@@ -366,12 +364,14 @@ async def admin_delete_post(
 
 import re
 def is_strong_password(password: str) -> bool:
-    # 至少8位，包含大小写字母、数字、特殊字符
     return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:\\|,.<>/?]).{8,}$', password))
 
 @app.post("/api/register")
 async def register(user: UserRegister):
     try:
+        # Truncate the password to 72 characters to prevent bcrypt issues
+        user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
+        
         username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
         if username_exists:
             return {"code": 400, "msg": "Username already exists"}
@@ -392,7 +392,6 @@ async def register(user: UserRegister):
             hashed_password=hashed_pw,
             is_verified=False,
             verify_token=verify_token,
-            created_at=datetime.now(),
             role="user"
         )
         await database.execute(query)
@@ -411,27 +410,31 @@ async def register(user: UserRegister):
 
 @app.get("/api/verify-email")
 async def verify_email(token: str):
-    user = await database.fetch_one(users.select().where(users.c.verify_token == token))
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    try:
+        user = await database.fetch_one(users.select().where(users.c.verify_token == token))
+        if not user:
+            return {"code": 400, "msg": "Invalid or expired token"}
 
-    await database.execute(
-        users.update()
-            .where(users.c.verify_token == token)
-            .values(is_verified=True, verify_token=None)
-    )
-    return {"msg": "Verification successful! You can now log in."}
+        await database.execute(
+            users.update()
+                .where(users.c.verify_token == token)
+                .values(is_verified=True, verify_token=None)
+        )
+
+        return {"code": 200, "msg": "Email verified successfully"}
+    except Exception as e:
+        return {"code": 500, "msg": str(e)}
 
 @app.post("/api/login")
 async def login(user: UserLogin, response: Response):
     try:
-        # 使用数据库查询 users 表
+        user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
+        
         query = users.select().where(users.c.username == user.username)
         row = await database.fetch_one(query)
         if not row or not verify_password(user.password, row["hashed_password"]):
             raise HTTPException(status_code=401, detail="Invalid username or password")
 
-        # 未激活邮箱禁止登录
         if not row["is_verified"]:
             raise HTTPException(status_code=400, detail="Please verify your email before login")
 
@@ -440,20 +443,18 @@ async def login(user: UserLogin, response: Response):
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
 
-        # 在开发环境（localhost）允许 secure=False，生产部署时务必设为 True
         secure_flag = os.getenv("ENV", "development") == "production"
 
         response.set_cookie(
             key="access_token",
             value=access_token,
             httponly=True,
-            secure=secure_flag,        # production: True
+            secure=secure_flag,
             samesite="Lax",
             max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             path="/"
         )
 
-        # 兼容旧客户端：仍返回 token 在 JSON（可选）；前端默认不再存储
         return {"code": 200, "access_token": access_token, "token_type": "bearer"}
 
     except HTTPException as he:
@@ -479,18 +480,17 @@ async def admin_login(admin: AdminLogin, response: Response):
             httponly=True,
             secure=secure_flag,
             samesite="Lax",
-            max_age=60 * 60 * 10,  # 10 hour
+            max_age=60 * 60 * 10,
             path="/"
         )
 
         return {"code": 200, "token": token, "username": "admin", "role": "admin"}
-    
+
     except HTTPException as he:
         return {"code": he.status_code, "msg": he.detail}
     except Exception as e:
         return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
-# Logout by clearing the cookie
 @app.post("/api/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
@@ -498,8 +498,27 @@ async def logout(response: Response):
 
 @app.get("/api/me")
 async def me(current_user: TokenData = Depends(get_current_user)):
-    # current_user 是 TokenData(username, role)
     return success(data={"username": current_user.username, "role": current_user.role})
+
+@app.get("/api/auth/check")
+async def check_verify(username: str):
+    user = await database.fetch_one(users.select().where(users.c.username == username))
+    if not user:
+        return {"code": 404, "is_verified": False}
+    return {"code": 200, "is_verified": user["is_verified"]}
+
+# ====================== 前端页面路由（渲染React组件） ======================
+# 渲染：等待邮箱验证页面 WaitVerification.jsx
+@app.get("/wait-verification")
+async def wait_verification():
+    return RedirectResponse("http://localhost:5173/wait-verification")
+
+# 渲染：邮箱验证页面 VerifyEmail.jsx（自动携带token）
+@app.get("/verify-email")
+async def verify_email_page(request: Request):
+    # 获取url中的token并传递给前端
+    token = request.query_params.get("token", "")
+    return RedirectResponse(f"http://localhost:5173/verify-email?token={token}")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

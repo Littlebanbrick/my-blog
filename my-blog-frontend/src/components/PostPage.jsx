@@ -3,22 +3,31 @@ import { useState, useEffect } from 'react';
 import { toggleLike, getComments, addComment } from '../utils';
 import DOMPurify from 'dompurify';
 
+const API_BASE = 'http://localhost:8000/api';
+
 function PostPage() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [isLiked, setIsLiked] = useState(false); // Like status for this post
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/posts/${id}`)
+    fetch(`${API_BASE}/me`, { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        setIsLoggedIn(data.code === 200);
+      });
+
+    fetch(`${API_BASE}/posts/${id}`)
       .then(r => r.json())
       .then(res => {
         setPost(res.data || null);
       });
 
     // Get current like status
-    fetch(`http://localhost:8000/api/posts/${id}/like_status`, {
+    fetch(`${API_BASE}/posts/${id}/like_status`, {
       credentials: 'include'
     })
     .then(r => r.json())
@@ -33,7 +42,7 @@ function PostPage() {
 
   const handleLike = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/posts/${id}/like`, {
+      const res = await fetch(`${API_BASE}/posts/${id}/like`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,9 +64,13 @@ function PostPage() {
     if (!newComment) return;
 
     try {
-      await addComment(id, newComment);
+      await fetch(`${API_BASE}/posts/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content: newComment })
+      });
       setNewComment("");
-
       getComments(id).then(res => {
         setComments(res.data || []);
       });

@@ -25,10 +25,12 @@ const RegisterPage = () => {
     }
     try {
       const res = await registerUser(username, email, password);
-      if (res.detail) {
-        setError(res.detail);
+
+      if(res.code === 200) {
+        localStorage.setItem('verify_username', username);
+        window.location.href = '/wait-verification';
       } else {
-        window.location.href = '/api/login'
+        setError(res.msg);
       }
     } catch (err) {
       setError('Network error. Please try again later.');

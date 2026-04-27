@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, setAuthToken } from '../utils';
 
+const API_BASE = 'http://localhost:8000/api';
+
 const LoginPage = () => {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [username, setUsername] = useState('');
@@ -15,13 +17,20 @@ const LoginPage = () => {
     setError('');
     try {
       setLoading(true);
-      const res = await loginUser(username, password);
-      if (res.detail) {
-        setError(res.detail);
-      } else {
-        // 后端已通过 httpOnly cookie 设置 token，前端不再存储 token
-        window.location.href = '/'; // 登录成功后刷新页面，触发 Header 重新获取用户信息
+      const res = await fetch(`${API_BASE}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (data.code !== 200) {
+        setError(data.msg || "Login failed");
+        return;
       }
+      
+      window.location.href = '/';
     } catch (err) {
       setError('Network error. Please try again later.');
     } finally {
@@ -33,7 +42,7 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/admin/login', {
+      const response = await fetch(`${API_BASE}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
