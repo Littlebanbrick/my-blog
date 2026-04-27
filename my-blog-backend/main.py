@@ -58,6 +58,11 @@ class AdminLogin(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
     role: str | None = None
+    
+class PostCreate(BaseModel):
+    title: str = Body(..., min_length=1, max_length=200)
+    preview: str = Body(..., min_length=1)  # a.k.a. content
+    location: str = Body(..., min_length=1, max_length=100)
 
 app.add_middleware(
     CORSMiddleware,
@@ -385,6 +390,8 @@ async def register(user: UserRegister):
 
         hashed_pw = get_password_hash(user.password)
         verify_token = secrets.token_urlsafe(32)
+        
+        expire_time = (datetime.utcnow() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
 
         query = users.insert().values(
             username=user.username,
@@ -392,6 +399,7 @@ async def register(user: UserRegister):
             hashed_password=hashed_pw,
             is_verified=False,
             verify_token=verify_token,
+            verify_token_expire=expire_time,
             role="user"
         )
         await database.execute(query)
@@ -415,14 +423,24 @@ async def verify_email(token: str):
         if not user:
             return {"code": 400, "msg": "Invalid or expired token"}
 
+        expire_time_str = user["verify_token_expire"]
+        if not expire_time_str:
+            return {"code": 400, "msg": "Invalid or expired token"}
+
+        expire_time = datetime.strptime(expire_time_str, "%Y-%m-%d %H:%M:%S")
+        if datetime.utcnow() > expire_time:
+            return {"code": 400, "msg": "Verification link expired (15min)"}
+
         await database.execute(
             users.update()
                 .where(users.c.verify_token == token)
-                .values(is_verified=True, verify_token=None)
+                .values(is_verified=1, verify_token=None, verify_token_expire=None)
         )
 
-        return {"code": 200, "msg": "Email verified successfully"}
+        return {"code": 200, "msg": "Email verified successfully!"}
+
     except Exception as e:
+        print("Verification error:", repr(e))
         return {"code": 500, "msg": str(e)}
 
 @app.post("/api/login")
@@ -507,19 +525,88 @@ async def check_verify(username: str):
         return {"code": 404, "is_verified": False}
     return {"code": 200, "is_verified": user["is_verified"]}
 
-# ====================== 前端页面路由（渲染React组件） ======================
-# 渲染：等待邮箱验证页面 WaitVerification.jsx
 @app.get("/wait-verification")
 async def wait_verification():
     return RedirectResponse("http://localhost:5173/wait-verification")
 
-# 渲染：邮箱验证页面 VerifyEmail.jsx（自动携带token）
 @app.get("/verify-email")
 async def verify_email_page(request: Request):
-    # 获取url中的token并传递给前端
     token = request.query_params.get("token", "")
     return RedirectResponse(f"http://localhost:5173/verify-email?token={token}")
 
+@app.get("/api/user/profile")
+async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
+    if current_user.username == "admin":
+        return success(data={
+            "username": "admin",
+            "email": "admin@blog.com",
+            "role": "admin"
+        })
+    user = await database.fetch_one(users.select().where(users.c.username == current_user.username))
+    return success(data={
+        "username": user["username"],
+        "email": user["email"],
+        "role": user["role"],
+        "is_verified": user["is_verified"]
+    })
+    
+@app.delete("/api/user/delete")
+async def delete_user(current_user: TokenData = Depends(get_current_user)):
+    if current_user.role == "admin":
+        return fail(msg="Admin cannot be deleted", code=403)
+    
+    async with database.transaction():
+        await database.execute(likes.delete().where(likes.c.user_name == current_user.username))
+        await database.execute(comments.delete().where(comments.c.author == current_user.username))
+        await database.execute(users.delete().where(users.c.username == current_user.username))
+    
+    response = JSONResponse(content=success(msg="Account deleted successfully"))
+    response.delete_cookie("access_token", path="/")
+    return response
+
+@app.post("/api/admin/posts/create")
+async def admin_create_post(
+    post: PostCreate,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    now = get_current_time()
+    query = posts.insert().values(
+        date=now,
+        title=post.title,
+        preview=post.preview,
+        location=post.location,
+        comment_count=0,
+        likes_count=0,
+        word_count=f"{len(post.preview)} words"
+    )
+    await database.execute(query)
+    return success(msg="Post created successfully")
+
+@app.delete("/api/admin/comments/{comment_id}")
+async def admin_delete_comment(
+    comment_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    # Get post id
+    comment = await database.fetch_one(comments.select().where(comments.c.id == comment_id))
+    if not comment: return fail(msg="Comment not found", code=404)
+
+    async with database.transaction():
+        await database.execute(comments.delete().where(comments.c.id == comment_id))
+        # Update comment count
+        await database.execute(
+            posts.update().where(posts.c.id == comment["post_id"]).values(
+                comment_count=posts.c.comment_count - 1
+            )
+        )
+    return success(data={"deleted_comment_id": comment_id})
+    
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse(

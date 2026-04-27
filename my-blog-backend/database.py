@@ -59,7 +59,8 @@ users = sqlalchemy.Table(
     Column("hashed_password", String(255), nullable=False),
     Column("role", String(50), nullable=False, default="user"),  # User or admin
     Column("is_verified", Integer, default=0),
-    Column("verify_token", String(255), nullable=True)
+    Column("verify_token", String(255), nullable=True),
+    Column("verify_token_expire", String(255), nullable=True)
 )
 
 engine = create_engine(
@@ -69,17 +70,33 @@ engine = create_engine(
 
 # Fix missing columns in the user table without dropping the table
 def fix_missing_columns():
+    def column_exists(table_name, column_name):
+        with engine.connect() as conn:
+            cursor = conn.execute(text(f"PRAGMA table_info({table_name})"))
+            columns = [row[1] for row in cursor.fetchall()]
+            return column_name in columns
+
     try:
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN hashed_password VARCHAR(255) DEFAULT ''"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user'"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN verify_token VARCHAR(255) NULL"))
+            if not column_exists("users", "hashed_password"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN hashed_password VARCHAR(255) DEFAULT ''"))
+            
+            if not column_exists("users", "role"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user'"))
+            
+            if not column_exists("users", "is_verified"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0"))
+            
+            if not column_exists("users", "verify_token"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN verify_token VARCHAR(255) NULL"))
+            
+            if not column_exists("users", "verify_token_expire"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN verify_token_expire VARCHAR(255) NULL"))
+            
             conn.commit()
-            print("Missing columns added successfully")
+            print("All missing columns added successfully!")
     except Exception as e:
-        # If the columns already exist, we can ignore the error
-        print("Columns already exist")
+        print(f"Error adding columns: {str(e)}")
 
 fix_missing_columns()
 
