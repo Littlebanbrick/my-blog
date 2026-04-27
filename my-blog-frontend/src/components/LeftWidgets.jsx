@@ -8,7 +8,7 @@ function ProfileCard() {
   // Data for profile cards
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-
+  const [rotation, setRotation] = useState(0)
   // State for hitokoto (dynamic quote)
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
 
@@ -24,6 +24,10 @@ function ProfileCard() {
         setLoading(false);
       });
   }, []);
+
+  const handleAvatarClick = () => {
+    setRotation(prev => prev + 360);
+  };
 
   const fetchQuote = async () => {
     try {
@@ -111,7 +115,13 @@ function ProfileCard() {
           <div className="level-item has-text-centered flex-shrink-1">
             <div>
               <figure className="image is-128x128 mx-auto mb-2">
-                <img className="avatar is-rounded" src={profile.avatar} alt="avatar" />
+                <img
+                  className="avatar is-rounded"
+                  src={profile.avatar || '/default-avatar.png'}
+                  alt="avatar"
+                  onClick={handleAvatarClick}
+                  style={{ cursor: 'pointer', transition: 'transform 0.8s ease', transform: `rotate(${rotation}deg)` }}
+                />
               </figure>
               <p className="title is-size-4 is-block" style={{ lineHeight: 'inherit' }}>
                 {profile.name}
@@ -141,7 +151,7 @@ function ProfileCard() {
         <div className="level-item has-text-centered is-marginless">
             <div style={{ minWidth: '60px' }}>
             <p className="heading">Likes</p>
-            <a href="/likes/">
+            <a href="/archives/">
                 <p className="title">{profile.likes}</p>
             </a>
             </div>
@@ -149,7 +159,7 @@ function ProfileCard() {
         <div className="level-item has-text-centered is-marginless">
             <div style={{ minWidth: '60px' }}>
             <p className="heading">Comments</p>
-            <a href="/comments/">
+            <a href="/archives/">
                 <p className="title">{profile.comments}</p>
             </a>
             </div>

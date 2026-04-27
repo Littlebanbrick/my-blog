@@ -9,6 +9,8 @@ import VerifyEmail from './components/VerifyEmail'
 import WaitVerification from './components/WaitVerification'
 import ProfilePage from './components/ProfilePage'
 import CreatePostPage from './components/CreatePostPage'
+import ArchivesPage from './components/ArchivesPage'
+import PhotographyPage from './components/PhotographyPage'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -25,6 +27,8 @@ function App() {
         <Route path="/wait-verification" element={<WaitVerification />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/create-post" element={<CreatePostPage />} />
+        <Route path="/archives" element={<ArchivesPage />} />
+        <Route path="/photography" element={<PhotographyPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>

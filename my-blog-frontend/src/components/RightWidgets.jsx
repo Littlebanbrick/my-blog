@@ -5,6 +5,8 @@ import photo2 from '../assets/PHOTOGRAPHY/DSC_4209.JPG';
 import photo3 from '../assets/PHOTOGRAPHY/DSC_4210.JPG';
 import photo4 from '../assets/PHOTOGRAPHY/DSC_4231.JPG';
 
+import { Link } from 'react-router-dom'
+
 function RightWidgets() {
   // Mock data for photos, notes, projects
   const photos = [
@@ -56,30 +58,32 @@ function RightWidgets() {
       </div>
 
       {/* Study Notes Block */}
-      <div className="card widget">
-        <div className="card-content">
-          <h3 className="menu-label mb-2">
-            <i className="fas fa-book mr-2"></i>Study Notes
-          </h3>
-          <ul className="menu-list">
-            {notes.map((note) => (
-              <li key={note.id}>
-                <a href={`/notes/${note.id}`} className="level is-mobile">
-                  <span
-                    className="level-left"
-                    style={{ flex: 1, wordBreak: 'break-word', marginRight: '0.6rem' }}>
-                        {note.title}
-                  </span>
-                  <span
-                  className="level-right is-size-7 has-text-grey-light"
-                  style={{ position: 'relative', top: '1px' }}
-                  >{note.date}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
+      <Link to="/photography" style={{ color: 'inherit', textDecoration: 'none' }}>
+        <div className="card widget">
+          <div className="card-content">
+            <h3 className="menu-label mb-2">
+              <i className="fas fa-book mr-2"></i>Study Notes
+            </h3>
+            <ul className="menu-list">
+              {notes.map((note) => (
+                <li key={note.id}>
+                  <a href={`/notes/${note.id}`} className="level is-mobile">
+                    <span
+                      className="level-left"
+                      style={{ flex: 1, wordBreak: 'break-word', marginRight: '0.6rem' }}>
+                          {note.title}
+                    </span>
+                    <span
+                    className="level-right is-size-7 has-text-grey-light"
+                    style={{ position: 'relative', top: '1px' }}
+                    >{note.date}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      </div>
+      </Link>
 
       {/* Projects Block */}
       <div className="card widget">
