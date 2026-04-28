@@ -2,59 +2,57 @@
 
 body {
   background-color: #f0f0f0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  margin: 0;
 }
 
-/* 确保固定导航栏下方内容有足够间距 */
 .has-navbar-fixed-top {
-  padding-top: 5rem !important; /* Bulma 默认值，你可以调到 5.5rem 或 6rem 如果觉得还不够 */
+  padding-top: 5rem !important;
 }
 
-/* 或者直接针对 section 添加 */
 .section.has-navbar-fixed-top {
   padding-top: 5.5rem;
 }
 
-/* #root 是 React 挂载点，让它撑满并保持列方向 */
 #root {
   display: flex;
   flex-direction: column;
-  flex: 1;                    /* 占满剩余空间 */
+  flex: 1;
+  overflow: visible;
 }
 
-/* 主要内容区域自动撑开，把 Footer 推下去 */
 .main-content {
   flex: 1;
 }
 
-/* Footer 自动跟在内容后面 */
 .footer {
-  margin-top: auto;            /* 如果内容少，Footer 会被推到最底部 */
+  margin-top: auto;
 }
 
-/* 修改所有链接的基础颜色 */
 a {
-  color: #1a365d;  /* 深蓝，接近午夜蓝 */
+  color: #1a365d;
 }
 
-/* 可选：鼠标悬停时的颜色（比基础色稍亮） */
 a:hover {
   color: #2c5282;
 }
 
-/* 修改汉堡按钮的横线颜色 */
 .navbar-burger span {
-  background-color: #1a365d !important;  /* 使用和链接一致的深蓝色 */
+  background-color: #1a365d !important;
 }
 
-/* 可选：悬停时稍微变亮，增加交互感 */
 .navbar-burger:hover span {
   background-color: #2c5282 !important;
 }
 
 .card.widget {
   margin-bottom: 1.5rem;
+}
+
+.sticky-sidebar {
+  position: sticky;
+  top: 4.5rem;
+  align-self: flex-start;
 }

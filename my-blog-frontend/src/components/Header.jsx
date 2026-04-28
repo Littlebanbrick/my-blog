@@ -66,11 +66,20 @@ function Header() {
             <Link className="navbar-item" to="/">
               Home
             </Link>
-            <Link className="navbar-item" to="/categories">
-              Categories
+            <Link className="navbar-item" to="/archives">
+              Archives
             </Link>
             <Link className="navbar-item" to="/about">
               About
+            </Link>
+            <Link className="navbar-item" to="https://github.com/Littlebanbrick" target="_blank" rel="noopener noreferrer">
+              <i className="fab fa-github mt-1"></i>
+            </Link>
+            <Link className="navbar-item" to="https://space.bilibili.com/3546895630731348?spm_id_from=333.1007.0.0" target="_blank" rel="noopener noreferrer">
+              <i className="fa-brands fa-bilibili mt-1"></i>
+            </Link>
+            <Link className="navbar-item" to="https://x.com/JohnnyWang5784" target="_blank" rel="noopener noreferrer">
+              <i className="fa-brands fa-x-twitter mt-1"></i>
             </Link>
           </div>
 
@@ -93,9 +102,6 @@ function Header() {
                 </div>
               </div>
             )}
-            <Link className="navbar-item" to="https://github.com/Littlebanbrick" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-github"></i>
-            </Link>
         </div>
       </div>
       </div>

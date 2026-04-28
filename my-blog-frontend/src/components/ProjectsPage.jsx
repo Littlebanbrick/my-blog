@@ -1,32 +1,67 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { getCurrentUser } from '../utils';
 
-const projects = [
-{ id: 1, name: 'LexiMind', desc: 'AI-Powered TOEFL English Learning Web App', link: 'https://github.com/Littlebanbrick/LexiMind' },
-{ id: 2, name: 'Diaries', desc: 'A simple local diary-repository web application based on html,css,javascript,flask,SQL and python', link: 'https://github.com/Littlebanbrick/diaries' },
-];
+const API_BASE = 'http://localhost:8000/api';
 
 function ProjectsPage() {
+  const [projects, setProjects] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const loadProjects = () => {
+    fetch(`${API_BASE}/projects`)
+      .then(res => res.json())
+      .then(res => setProjects(res.data || []))
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    loadProjects();
+    getCurrentUser().then(res => {
+      if (res.data?.role === 'admin') setIsAdmin(true);
+    });
+  }, []);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this project?')) return;
+    await fetch(`${API_BASE}/admin/projects/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    loadProjects();
+  };
+
   return (
     <section className="section has-navbar-fixed-top">
       <div className="container">
-        <h1 className="title is-3 mb-5">Projects</h1>
+        <div className="level">
+          <div className="level-left">
+            <h1 className="title is-3">Projects</h1>
+          </div>
+          {isAdmin && (
+            <div className="level-right">
+              <Link to="/projects/new" className="button is-dark">New Project</Link>
+            </div>
+          )}
+        </div>
 
         <div className="columns is-multiline">
-          {projects.map(project => (
-            <div key={project.id} className="column is-6-tablet is-4-desktop">
-              <a 
-                href={project.link} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={{ color: 'inherit', textDecoration: 'none' }}
-              >
-                <div className="card" style={{ height: '100%' }}>
-                  <div className="card-content">
-                    <p className="title is-5">{project.name}</p>
-                    <p className="has-text-grey is-size-7">{project.desc}</p>
-                  </div>
+          {projects.map(proj => (
+            <div key={proj.id} className="column is-6-tablet is-4-desktop">
+              <div className="card" style={{ height: '100%' }}>
+                <div className="card-content">
+                  <p className="title is-5">
+                    <a href={proj.link} target="_blank" rel="noopener noreferrer">{proj.name}</a>
+                  </p>
+                  <p className="has-text-grey">{proj.desc}</p>
                 </div>
-              </a>
+                {isAdmin && (
+                  <footer className="card-footer">
+                    <Link to={`/projects/${proj.id}/edit`} className="card-footer-item">Edit</Link>
+                    <a className="card-footer-item has-text-danger" onClick={() => handleDelete(proj.id)}>Delete</a>
+                  </footer>
+                )}
+              </div>
             </div>
           ))}
         </div>

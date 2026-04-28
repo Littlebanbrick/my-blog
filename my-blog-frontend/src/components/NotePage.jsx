@@ -2,48 +2,45 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getCurrentUser } from '../utils';
+
+const API_BASE = 'http://localhost:8000/api';
 
 function NotePage() {
   const { id } = useParams();
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [note, setNote] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const loadNote = async () => {
-      try {
-        // 使用动态导入，Vite 会处理路径
-        const raw = await import(`../assets/notes/${id}.md?raw`);
-        setContent(raw.default);
-      } catch (err) {
-        console.error('Failed to load note:', err);
-        setContent('# Note not found');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadNote();
+    fetch(`${API_BASE}/notes/${id}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.code === 200) setNote(res.data);
+      })
+      .catch(console.error);
+
+    getCurrentUser().then(res => {
+      if (res.data?.role === 'admin') setIsAdmin(true);
+    });
   }, [id]);
 
-  if (loading) return <section className="section"><div className="container">Loading...</div></section>;
+  if (!note) return <section className="section"><div className="container">Loading...</div></section>;
 
   return (
     <section className="section has-navbar-fixed-top">
       <div className="container">
-        <Link to="/study-notes" className="button is-light is-small mb-4">
-          &larr; Back to Notes
-        </Link>
-        <div 
-          className="content markdown-body" 
-          style={{ 
-            maxWidth: '800px', 
-            margin: '0 auto',
-            backgroundColor: 'transparent',
-            padding: '2rem 2.5rem',
-            borderRadius: '6px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-          }}
-        >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+        <div className="level">
+          <div className="level-left">
+            <Link to="/study-notes" className="button is-light is-small">&larr; Back</Link>
+          </div>
+          {isAdmin && (
+            <div className="level-right">
+              <Link to={`/study-notes/${id}/edit`} className="button is-dark is-small">Edit</Link>
+            </div>
+          )}
+        </div>
+        <div className="content markdown-body" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '6px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
         </div>
       </div>
     </section>

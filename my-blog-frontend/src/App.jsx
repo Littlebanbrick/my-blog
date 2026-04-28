@@ -14,6 +14,9 @@ import PhotographyPage from './components/PhotographyPage'
 import StudyNotesPage from './components/StudyNotesPage'
 import NotePage from './components/NotePage'
 import ProjectsPage from './components/ProjectsPage'
+import NoteEditor from './components/NoteEditor'
+import ProjectEditor from './components/ProjectEditor'
+import AboutPage from './components/AboutPage'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -35,6 +38,11 @@ function App() {
         <Route path="/study-notes" element={<StudyNotesPage />} />
         <Route path="/study-notes/:id" element={<NotePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/study-notes/new" element={<NoteEditor />} />
+        <Route path="/study-notes/:id/edit" element={<NoteEditor />} />
+        <Route path="/projects/new" element={<ProjectEditor />} />
+        <Route path="/projects/:id/edit" element={<ProjectEditor />} />
+        <Route path="/about" element={<AboutPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>

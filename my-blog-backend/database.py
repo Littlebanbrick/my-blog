@@ -35,7 +35,9 @@ comments = sqlalchemy.Table(
     Column("post_id", Integer),                  
     Column("author", String, default="anonymous"),   
     Column("content", Text),                          
-    Column("created_at", String),                
+    Column("created_at", String),
+    Column("parent_id", Integer, nullable=True),
+    Column("parent_author", String, nullable=True),
 )
 
 # ========== Table of likes  ==========
@@ -61,6 +63,17 @@ users = sqlalchemy.Table(
     Column("is_verified", Integer, default=0),
     Column("verify_token", String(255), nullable=True),
     Column("verify_token_expire", String(255), nullable=True)
+)
+
+# ========== Table of projects  ==========
+projects_table = sqlalchemy.Table(
+    "projects",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("name", String(100), nullable=False),
+    Column("desc", String(200)),
+    Column("link", String(300), nullable=False),
+    Column("created_at", String(20)),
 )
 
 engine = create_engine(
@@ -92,6 +105,12 @@ def fix_missing_columns():
             
             if not column_exists("users", "verify_token_expire"):
                 conn.execute(text("ALTER TABLE users ADD COLUMN verify_token_expire VARCHAR(255) NULL"))
+                
+            if not column_exists("comments", "parent_id"):
+                conn.execute(text("ALTER TABLE comments ADD COLUMN parent_id INTEGER"))
+                
+            if not column_exists("comments", "parent_author"):
+                conn.execute(text("ALTER TABLE comments ADD COLUMN parent_author VARCHAR(255)"))
             
             conn.commit()
             print("All missing columns added successfully!")

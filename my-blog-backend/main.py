@@ -4,15 +4,18 @@ main.py
 To run this application, enter `uvicorn main:app --reload --port 8000` in the terminal.
 '''
 
-from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Response
+from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from database import database, posts, comments, likes, users
+from fastapi.staticfiles import StaticFiles
+from database import database, posts, comments, likes, users, projects_table
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
-from sqlalchemy import func, select, and_
+from sqlalchemy import func, select, and_, desc
 from pydantic import BaseModel, EmailStr
 import os
+import shutil
 import uuid
+import time
 from dotenv import load_dotenv
 
 # Email verification
@@ -37,11 +40,20 @@ ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
+PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/PHOTOGRAPHY")
+os.makedirs(PHOTOS_DIR, exist_ok=True)
+
+NOTES_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/notes")
+os.makedirs(NOTES_DIR, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', 'nef'}
+
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
     raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.")
 
 class CommentRequest(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
+    parent_id: int | None = Body(None)
 
 class UserRegister(BaseModel):
     username: str = Body(..., min_length=3, max_length=50)
@@ -63,6 +75,14 @@ class PostCreate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
     preview: str = Body(..., min_length=1)  # a.k.a. content
     location: str = Body(..., max_length=100) # location can be empty but not null
+    
+class NoteCreate(BaseModel):
+    title: str = Body(..., min_length=1, max_length=200)
+    content: str = Body(..., min_length=1)
+
+class NoteUpdate(BaseModel):
+    title: str = Body(..., min_length=1, max_length=200)
+    content: str = Body(..., min_length=1)
 
 app.add_middleware(
     CORSMiddleware,
@@ -197,7 +217,9 @@ def send_verify_email(to_email: str, token: str):
 
     except Exception as e:
         print("Failed to send verification email:", str(e))
-
+        
+def allowed_file(filename):
+    return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.on_event("startup")
 async def startup():
@@ -213,7 +235,7 @@ def read_root():
 
 @app.get("/api/posts")
 async def get_posts():
-    query = posts.select()
+    query = posts.select().order_by(posts.c.id.desc())
     data = await database.fetch_all(query)
     return success(data=data)
 
@@ -317,8 +339,20 @@ async def toggle_like(
 @app.get("/api/posts/{post_id}/comments")
 async def get_comments(post_id: int):
     query = comments.select().where(comments.c.post_id == post_id).order_by(comments.c.created_at.asc())
-    data = await database.fetch_all(query)
-    return success(data=data)
+    rows = await database.fetch_all(query)
+    
+    comment_dict = {row["id"]: dict(row) for row in rows}
+    
+    result = []
+    for row in rows:
+        c = dict(row)
+        if c.get("parent_id"):
+            parent = comment_dict.get(c["parent_id"])
+            c["parent_author"] = parent["author"] if parent else "Unknown"
+        else:
+            c["parent_author"] = None
+        result.append(c)
+    return success(data=result)
 
 @app.post("/api/posts/{post_id}/comments")
 async def add_comment(
@@ -327,21 +361,32 @@ async def add_comment(
     current_user: TokenData = Depends(get_current_user)
 ):
     author = current_user.username
-
     now = get_current_time()
+    
+    parent_author = None
+    if req.parent_id:
+        parent_comment = await database.fetch_one(
+            comments.select().where(comments.c.id == req.parent_id)
+        )
+        if parent_comment:
+            parent_author = parent_comment["author"]
+    
     query = comments.insert().values(
         post_id=post_id,
         author=author,
         content=req.content,
-        created_at=now
+        created_at=now,
+        parent_id=req.parent_id,
+        parent_author=parent_author
     )
     await database.execute(query)
 
-    update_query = posts.update().where(posts.c.id == post_id).values(
-        comment_count=posts.c.comment_count + 1
+    await database.execute(
+        posts.update().where(posts.c.id == post_id).values(
+            comment_count=posts.c.comment_count + 1
+        )
     )
-    await database.execute(update_query)
-
+    
     return success(msg="Comment added")
 
 @app.delete("/api/admin/posts/{post_id}")
@@ -634,6 +679,194 @@ async def admin_delete_comment(
             )
         )
     return success(data={"deleted_comment_id": comment_id})
+
+@app.post("/api/admin/photos/upload")
+async def upload_photo(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if not allowed_file(file.filename):
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    timestamp = str(int(time.time() * 1000))
+    safe_name = f"{timestamp}_{file.filename}"
+    file_path = os.path.join(PHOTOS_DIR, safe_name)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    url = f"/src/assets/PHOTOGRAPHY/{safe_name}"
+    return success(data={"url": url})
+
+@app.get("/api/photos")
+async def list_photos():
+    if not os.path.exists(PHOTOS_DIR):
+        return success(data=[])
+    files = os.listdir(PHOTOS_DIR)
+    
+    photos = []
+    for f in files:
+        if allowed_file(f):
+            photos.append(f"/src/assets/PHOTOGRAPHY/{f}")
+    photos.sort(reverse=True)
+    return success(data=photos)
+
+@app.delete("/api/admin/photos/{filename}")
+async def delete_photo(
+    filename: str,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    file_path = os.path.join(PHOTOS_DIR, filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return success(msg="Deleted")
+    else:
+        return fail(msg="File not found", code=404)
+    
+@app.get("/api/notes")
+async def list_notes():
+    if not os.path.exists(NOTES_DIR):
+        return success(data=[])
+    files = os.listdir(NOTES_DIR)
+    notes_list = []
+    for f in files:
+        if f.endswith('.md'):
+            path = os.path.join(NOTES_DIR, f)
+            with open(path, 'r', encoding='utf-8') as fp:
+                raw = fp.read()
+            lines = raw.strip().split('\n')
+            summary = lines[0].lstrip('#').strip() if lines else ''
+            notes_list.append({
+                'id': f.replace('.md', ''),
+                'title': f.replace('.md', '').replace('-', ' ').title(),
+                'summary': summary,
+                'filename': f,
+                'updated_at': datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M:%S")
+            })
+    notes_list.sort(key=lambda x: x['updated_at'], reverse=True)
+    return success(data=notes_list)
+
+@app.get("/api/notes/{note_id}")
+async def get_note(note_id: str):
+    filename = note_id + '.md'
+    path = os.path.join(NOTES_DIR, filename)
+    if not os.path.exists(path):
+        return fail(msg="Note not found", code=404)
+    with open(path, 'r', encoding='utf-8') as fp:
+        content = fp.read()
+    return success(data={
+        'id': note_id,
+        'title': note_id.replace('-', ' ').title(),
+        'content': content
+    })
+
+@app.post("/api/admin/notes")
+async def create_note(note: NoteCreate, current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    base = re.sub(r'[^\w\s-]', '', note.title).strip()
+    base = re.sub(r'[-\s]+', '-', base)[:50]
+    filename = base + '.md'
+    path = os.path.join(NOTES_DIR, filename)
+    if os.path.exists(path):
+        filename = f"{base}-{uuid.uuid4().hex[:6]}.md"
+        path = os.path.join(NOTES_DIR, filename)
+    with open(path, 'w', encoding='utf-8') as fp:
+        fp.write(note.content)
+    note_id = filename.replace('.md', '')
+    return success(data={'id': note_id, 'title': note.title, 'content': note.content})
+
+@app.put("/api/admin/notes/{note_id}")
+async def update_note(note_id: str, note: NoteUpdate, current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    old_file = note_id + '.md'
+    old_path = os.path.join(NOTES_DIR, old_file)
+    if not os.path.exists(old_path):
+        return fail(msg="Note not found", code=404)
+
+    new_base = re.sub(r'[^\w\s-]', '', note.title).strip()
+    new_base = re.sub(r'[-\s]+', '-', new_base)[:50]
+    new_file = new_base + '.md'
+    new_path = os.path.join(NOTES_DIR, new_file)
+
+    if old_file != new_file and not os.path.exists(new_path):
+        os.rename(old_path, new_path)
+        final_path = new_path
+        final_id = new_file.replace('.md', '')
+    else:
+        final_path = old_path
+        final_id = note_id
+
+    with open(final_path, 'w', encoding='utf-8') as fp:
+        fp.write(note.content)
+
+    return success(data={'id': final_id, 'title': note.title, 'content': note.content})
+
+@app.delete("/api/admin/notes/{note_id}")
+async def delete_note(note_id: str, current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    path = os.path.join(NOTES_DIR, note_id + '.md')
+    if os.path.exists(path):
+        os.remove(path)
+        return success(msg="Deleted")
+    return fail(msg="Note not found", code=404)
+
+@app.get("/api/projects")
+async def get_projects():
+    query = projects_table.select().order_by(projects_table.c.id.desc())
+    rows = await database.fetch_all(query)
+    return success(data=[dict(row) for row in rows])
+
+@app.post("/api/admin/projects")
+async def create_project(
+    req: dict,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    query = projects_table.insert().values(
+        name=req.get("name"),
+        desc=req.get("desc", ""),
+        link=req.get("link"),
+        created_at=now
+    )
+    last_id = await database.execute(query)
+    return success(data={"id": last_id, "msg": "Project created"})
+
+@app.put("/api/admin/projects/{project_id}")
+async def update_project(
+    project_id: int,
+    req: dict,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = projects_table.update().where(projects_table.c.id == project_id).values(
+        name=req.get("name"),
+        desc=req.get("desc", ""),
+        link=req.get("link")
+    )
+    await database.execute(query)
+    return success(data={"msg": "Project updated"})
+
+@app.delete("/api/admin/projects/{project_id}")
+async def delete_project(
+    project_id: int,
+    current_user: TokenData = Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = projects_table.delete().where(projects_table.c.id == project_id)
+    await database.execute(query)
+    return success(data={"msg": "Project deleted"})
     
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { getCurrentUser } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -18,6 +19,24 @@ function ArchivesPage() {
     if (order === 'asc') return a.date.localeCompare(b.date);
     return b.date.localeCompare(a.date);
   });
+
+  const handlePostRightClick = async (e, postId) => {
+    e.preventDefault();
+    const userRes = await getCurrentUser();
+    if (userRes.data?.role !== 'admin') return;
+    if (!window.confirm('Confirm to delete this post?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/posts/${postId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setPosts(prev => prev.filter(p => p.id !== postId));
+      }
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+    }
+  };
 
   return (
     <section className="section has-navbar-fixed-top">
@@ -41,6 +60,7 @@ function ArchivesPage() {
             <div key={post.id} className="column is-6-tablet is-4-desktop">
                 <Link
                 to={`/post/${post.id}`}
+                onContextMenu={(e) => handlePostRightClick(e, post.id)}
                 style={{ color: 'inherit', textDecoration: 'none', display: 'block', height: '100%' }}
                 >
                 <div className="card" style={{ height: '100%' }}>

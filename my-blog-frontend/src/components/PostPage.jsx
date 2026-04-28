@@ -13,6 +13,7 @@ function PostPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [likesUsers, setLikesUsers] = useState([]);
+  const [replyTo, setReplyTo] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/me`, { credentials: "include" })
@@ -69,16 +70,22 @@ function PostPage() {
   };
 
   const handleSubmitComment = async () => {
-    if (!newComment) return;
+    if (!newComment.trim()) return;
+
+    const body = { content: newComment };
+    if (replyTo) {
+      body.parent_id = replyTo.id;
+    }
 
     try {
       await fetch(`${API_BASE}/posts/${id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content: newComment })
+        body: JSON.stringify(body)
       });
       setNewComment("");
+      setReplyTo(null);                        // 清空回复状态
       getComments(id).then(res => setComments(res.data || []));
     } catch (error) {
       console.log("Failed to submit comment", error);
@@ -146,9 +153,10 @@ function PostPage() {
         <hr />
         <h3 className="title is-4">Comments ({comments.length})</h3>
         {comments.map(c => (
-          <div 
-            key={c.id} 
+          <div
+            key={c.id}
             className="box"
+            style={{ marginLeft: c.parent_id ? '2rem' : '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -157,11 +165,46 @@ function PostPage() {
               });
             }}
           >
-            <strong>{c.author}</strong>
-            <p className="mt-1" >{c.content}</p>
+            <div style={{ flex: 1 }}>
+              <strong>{c.author}</strong>
+              {c.parent_author && (
+                <span className="has-text-grey is-size-7"> reply to <strong>{c.parent_author}</strong></span>
+              )}
+              <small className="has-text-grey ml-2">{c.created_at}</small>
+              <p className="mt-1">{c.content}</p>
+            </div>
+            {isLoggedIn && (
+              <button
+                className="button is-text is-small is-dark"
+                style={{ flexShrink: 0 }}
+                onClick={() => setReplyTo({ id: c.id, author: c.author })}
+              >
+                Reply
+              </button>
+            )}
           </div>
         ))}
 
+        {replyTo && (
+          <div
+            className="notification is-light is-info is-small"
+            style={{
+              padding: '0.5rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>
+              Replying to <strong>{replyTo.author}</strong>
+            </span>
+            <button
+              className="delete is-small"
+              style={{ verticalAlign: 'middle', marginTop: 0 }}
+              onClick={() => setReplyTo(null)}
+            />
+          </div>
+        )}
         <textarea
           className="textarea"
           value={newComment}
