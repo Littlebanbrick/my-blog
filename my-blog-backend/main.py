@@ -8,7 +8,7 @@ from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Resp
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
-from database import database, posts, comments, likes, users, projects_table
+from database import database, posts, comments, likes, users, projects_table, post_images
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy import func, select, and_, desc
 from pydantic import BaseModel, EmailStr
@@ -46,6 +46,9 @@ os.makedirs(PHOTOS_DIR, exist_ok=True)
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
 
+POST_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "static/uploads/posts")
+os.makedirs(POST_IMAGES_DIR, exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', 'nef'}
 
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
@@ -75,6 +78,7 @@ class PostCreate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
     preview: str = Body(..., min_length=1)  # a.k.a. content
     location: str = Body(..., max_length=100) # location can be empty but not null
+    images: list[str] = Body([])    # The list of images' urls
     
 class NoteCreate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
@@ -105,6 +109,13 @@ def fail(msg="Error", code=400):
         "msg": msg,
         "data": None
     }
+    
+def count_words(text):
+    english_words = len(re.findall(r'[a-zA-Z]+', text))
+
+    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    
+    return english_words + chinese_chars
 
 def get_current_time() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -235,9 +246,21 @@ def read_root():
 
 @app.get("/api/posts")
 async def get_posts():
-    query = posts.select().order_by(posts.c.id.desc())
-    data = await database.fetch_all(query)
-    return success(data=data)
+    query = posts.select().order_by(desc(posts.c.date))
+    rows = await database.fetch_all(query)
+    result = []
+    for row in rows:
+        post = dict(row)
+        # Ask for the first 4 images
+        imgs = await database.fetch_all(
+            post_images.select()
+            .where(post_images.c.post_id == post["id"])
+            .order_by(post_images.c.order)
+            .limit(4)
+        )
+        post["images"] = [img["url"] for img in imgs]
+        result.append(post)
+    return success(data=result)
 
 @app.get("/api/profile")
 async def get_profile():
@@ -257,9 +280,16 @@ async def get_profile():
 
 @app.get("/api/posts/{post_id}")
 async def get_post_detail(post_id: int):
-    query = posts.select().where(posts.c.id == post_id)
-    data = await database.fetch_one(query)
-    return success(data=data)
+    post = await database.fetch_one(posts.select().where(posts.c.id == post_id))
+    if not post:
+        return fail(msg="Not found")
+    post = dict(post)
+    
+    imgs = await database.fetch_all(
+        post_images.select().where(post_images.c.post_id == post_id).order_by(post_images.c.order)
+    )
+    post["images"] = [img["url"] for img in imgs]
+    return success(data=post)
 
 @app.get("/api/posts/{post_id}/like_status")
 async def get_like_status(post_id: int, current_user: TokenData = Depends(get_current_user)):
@@ -390,25 +420,38 @@ async def add_comment(
     return success(msg="Comment added")
 
 @app.delete("/api/admin/posts/{post_id}")
-async def admin_delete_post(
-    post_id: int,
-    current_user: TokenData = Depends(get_current_user)
-):
+async def admin_delete_post(post_id: int, current_user: TokenData = Depends(get_current_user)):    
     if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+        raise HTTPException(status_code=403, detail="Admin only")
 
-    if not await check_post_exists(post_id):
-        return fail(msg=f"Post {post_id} not found", code=404)
+    image_records = await database.fetch_all(
+        post_images.select().where(post_images.c.post_id == post_id)
+    )
+
+    for img in image_records:
+        url = img["url"]
+        if url.startswith("http://localhost:8000"):
+            relative = url.replace("http://localhost:8000", "").lstrip("/")
+        elif url.startswith("/"):
+            relative = url.lstrip("/")
+        else:
+            relative = url
+
+        file_path = os.path.abspath(relative)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                print(f"Deleted: {file_path}")
+            except Exception as e:
+                print(f"Error deleting {file_path}: {e}")
+        else:
+            print(f"File not found (skip): {file_path}")
 
     async with database.transaction():
-        delete_likes_query = likes.delete().where(likes.c.post_id == post_id)
-        await database.execute(delete_likes_query)
-
-        delete_post_query = posts.delete().where(posts.c.id == post_id)
-        await database.execute(delete_post_query)
+        await database.execute(post_images.delete().where(post_images.c.post_id == post_id))
+        await database.execute(likes.delete().where(likes.c.post_id == post_id))
+        await database.execute(comments.delete().where(comments.c.post_id == post_id))
+        await database.execute(posts.delete().where(posts.c.id == post_id))
 
     return success(data={"deleted_post_id": post_id})
 
@@ -531,8 +574,14 @@ async def admin_login(admin: AdminLogin, response: Response):
         if admin.admin_key != ADMIN_SECRET_KEY:
             raise HTTPException(status_code=403, detail="Invalid admin key")
 
+        admin_user = await database.fetch_one(
+            users.select().where(users.c.role == "admin")
+        )
+        if not admin_user:
+            raise HTTPException(status_code=500, detail="No admin user found in database")
+
         token = create_access_token(
-            data={"sub": "admin", "role": "admin"},
+            data={"sub": admin_user["username"], "role": "admin"},
             expires_delta=timedelta(hours=1)
         )
 
@@ -547,8 +596,12 @@ async def admin_login(admin: AdminLogin, response: Response):
             path="/"
         )
 
-        return {"code": 200, "token": token, "username": "admin", "role": "admin"}
-
+        return {
+            "code": 200,
+            "token": token,
+            "username": admin_user["username"],
+            "role": "admin"
+        }
     except HTTPException as he:
         return {"code": he.status_code, "msg": he.detail}
     except Exception as e:
@@ -638,13 +691,11 @@ async def delete_user(current_user: TokenData = Depends(get_current_user)):
     return response
 
 @app.post("/api/admin/posts/create")
-async def admin_create_post(
-    post: PostCreate,
-    current_user: TokenData = Depends(get_current_user)
-):
+async def admin_create_post(post: PostCreate, current_user: TokenData = Depends(get_current_user)):
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
+        raise HTTPException(status_code=403)
+    if len(post.images) > 9:
+        return fail("Maximum 9 images allowed")
     now = get_current_time()
     query = posts.insert().values(
         date=now,
@@ -653,10 +704,14 @@ async def admin_create_post(
         location=post.location,
         comment_count=0,
         likes_count=0,
-        word_count=f"{len(post.preview)} words"
+        word_count=f"{count_words(post.preview)} words"
     )
-    await database.execute(query)
-    return success(msg="Post created successfully")
+    last_id = await database.execute(query)
+    for idx, img_url in enumerate(post.images):
+        await database.execute(
+            post_images.insert().values(post_id=last_id, url=img_url, order=idx)
+        )
+    return success(msg="Post created")
 
 @app.delete("/api/admin/comments/{comment_id}")
 async def admin_delete_comment(
@@ -867,6 +922,34 @@ async def delete_project(
     query = projects_table.delete().where(projects_table.c.id == project_id)
     await database.execute(query)
     return success(data={"msg": "Project deleted"})
+
+@app.post("/api/admin/upload-post-image")
+async def upload_post_image(
+    file: UploadFile = File(...),
+    current_user: TokenData = Depends(get_current_user)
+):
+    """ 上传帖子配图，管理员专用 """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if not allowed_file(file.filename):
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    try:
+        ext = os.path.splitext(file.filename)[1]
+
+        timestamp = str(int(time.time() * 1000))
+        random_str = uuid.uuid4().hex[:8]
+        safe_name = f"{timestamp}_{random_str}{ext}"
+        file_path = os.path.join(POST_IMAGES_DIR, safe_name)
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        url = f"http://localhost:8000/static/uploads/posts/{safe_name}"
+        return success(data={"url": url})
+    except Exception as e:
+        print("Upload post image error:", repr(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
     
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
@@ -874,3 +957,5 @@ async def http_exception_handler(request, exc):
         status_code=exc.status_code,
         content=fail(exc.detail, exc.status_code)
     )
+    
+app.mount("/static", StaticFiles(directory="static"), name="static")

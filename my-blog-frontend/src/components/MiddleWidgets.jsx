@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { getCurrentUser } from '../utils'
+import { getCurrentUser, getImageUrl } from '../utils'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -176,6 +176,39 @@ function MomentList() {
 
               <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
               <div className="content"><p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p></div>
+
+              {item.images && item.images.length > 0 && (
+                <div className="columns is-multiline is-mobile mt-2">
+                  {item.images.length === 1 ? (
+                    <div className="column is-12">
+                      <figure>
+                        <img
+                          src={getImageUrl(item.images[0])}
+                          alt="post image"
+                          style={{
+                            width: '100%',
+                            maxHeight: '300px',
+                            objectFit: 'contain',
+                            display: 'block',
+                          }}
+                        />
+                      </figure>
+                    </div>
+                  ) : (
+                    item.images.slice(0, 4).map((url, idx) => (
+                      <div key={idx} className="column is-6">
+                        <figure className="image is-square">
+                          <img
+                            src={getImageUrl(url)}
+                            alt={`img-${idx}`}
+                            style={{ objectFit: 'cover' }}
+                          />
+                        </figure>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
 
               {item.location && (
                 <div className="index-category-tag">

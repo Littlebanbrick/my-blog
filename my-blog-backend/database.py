@@ -13,7 +13,7 @@ database = databases.Database(DATABASE_URL)
 # Metadata. Used for defining all the tables
 metadata = sqlalchemy.MetaData()
 
-# ========== Table of Moments ==========
+# ========== Table of Posts ==========
 posts = sqlalchemy.Table(
     "posts",
     metadata,
@@ -25,6 +25,16 @@ posts = sqlalchemy.Table(
     Column("comment_count", Integer, default=0),      
     Column("likes_count", Integer, default=0),         
     Column("word_count", String),                      
+)
+
+# ========== Table of Post Images ==========
+post_images = sqlalchemy.Table(
+    "post_images",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("post_id", Integer, nullable=False),
+    Column("url", String(300), nullable=False),
+    Column("order", Integer, default=0),
 )
 
 # ========== Table of comments  ==========
@@ -111,6 +121,18 @@ def fix_missing_columns():
                 
             if not column_exists("comments", "parent_author"):
                 conn.execute(text("ALTER TABLE comments ADD COLUMN parent_author VARCHAR(255)"))
+                
+            if not column_exists("post_images", "id"):
+                conn.execute(text("ALTER TABLE post_images ADD COLUMN id INTEGER"))
+                
+            if not column_exists("post_images", "post_id"):
+                conn.execute(text("ALTER TABLE post_images ADD COLUMN post_id INTEGER"))
+            
+            if not column_exists("post_images", "url"):
+                conn.execute(text("ALTER TABLE post_images ADD COLUMN url VARCHAR(300)"))
+                
+            if not column_exists("post_images", "order"):
+                conn.execute(text("ALTER TABLE post_images ADD COLUMN order INTEGER"))
             
             conn.commit()
             print("All missing columns added successfully!")

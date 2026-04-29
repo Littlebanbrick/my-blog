@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getCurrentUser } from '../utils';
+import { getCurrentUser, getImageUrl } from '../utils';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = 'http://localhost:8000';
 
 function ArchivesPage() {
   const [posts, setPosts] = useState([]);
-  const [order, setOrder] = useState('desc'); // 'desc' or 'asc'
+  const [order, setOrder] = useState('desc');
 
   useEffect(() => {
-    fetch(`${API_BASE}/posts`)
+    fetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
       .then(res => setPosts(res.data || []))
       .catch(console.error);
@@ -56,23 +56,54 @@ function ArchivesPage() {
         </div>
 
         <div className="columns is-multiline">
-            {sorted.map(post => (
-            <div key={post.id} className="column is-6-tablet is-4-desktop">
-                <Link
+          {sorted.map(post => {
+            const validImages = (post.images || []).filter(url => url && url.trim() !== '');
+            return (
+              <Link
+                key={post.id}
                 to={`/post/${post.id}`}
+                className="column is-6-tablet is-4-desktop"
+                style={{ color: 'inherit', textDecoration: 'none' }}
                 onContextMenu={(e) => handlePostRightClick(e, post.id)}
-                style={{ color: 'inherit', textDecoration: 'none', display: 'block', height: '100%' }}
-                >
+              >
                 <div className="card" style={{ height: '100%' }}>
-                    <div className="card-content">
+                  <div className="card-content">
                     <p className="title is-5">{post.title}</p>
                     <p className="subtitle is-6 has-text-grey">{post.date}</p>
                     <p style={{ whiteSpace: 'pre-line' }}>{post.preview}</p>
-                    </div>
+
+                    {validImages.length > 0 && (
+                      <div className="columns is-multiline is-mobile mt-2">
+                        {validImages.length === 1 ? (
+                          <div className="column is-12">
+                            <figure>
+                              <img
+                                src={getImageUrl(validImages[0])}
+                                alt="preview"
+                                style={{ width: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                              />
+                            </figure>
+                          </div>
+                        ) : (
+                          validImages.slice(0, 4).map((url, idx) => (
+                            <div key={idx} className="column is-6">
+                              <figure className="image is-square">
+                                <img
+                                  src={getImageUrl(url)}
+                                  alt={`img-${idx}`}
+                                  style={{ objectFit: 'cover' }}
+                                />
+                              </figure>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                </Link>
-            </div>
-            ))}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

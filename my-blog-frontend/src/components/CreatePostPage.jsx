@@ -8,21 +8,50 @@ function CreatePostPage() {
   const [content, setContent] = useState('');
   const [location, setLocation] = useState('');
   const navigate = useNavigate();
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   const handleSubmit = async () => {
+    if (uploading) return;
+    setUploading(true);
+
     try {
+      const imageUrls = [];
+      for (const file of selectedFiles) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetch(`${API_BASE}/admin/upload-post-image`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => null);
+          throw new Error(err?.detail || err?.msg || 'Image upload failed');
+        }
+        const uploadData = await uploadRes.json();
+        if (uploadData.code !== 200) {
+          throw new Error(uploadData.msg || 'Image upload failed');
+        }
+        imageUrls.push(uploadData.data.url);
+      }
+
       const res = await fetch(`${API_BASE}/admin/posts/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ title, preview: content, location: location.trim() })
+        body: JSON.stringify({
+          title,
+          preview: content,
+          location: location.trim(),
+          images: imageUrls,
+        }),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
         const msg = errData?.detail?.[0]?.msg || errData?.msg || `HTTP ${res.status}`;
-        alert('Failed to create post: ' + msg);
-        return;
+        throw new Error(msg);
       }
 
       const data = await res.json();
@@ -30,11 +59,13 @@ function CreatePostPage() {
         alert('Post created!');
         navigate('/');
       } else {
-        alert('Failed: ' + (data.msg || 'Unknown error'));
+        throw new Error(data.msg || 'Unknown error');
       }
     } catch (err) {
       console.error(err);
-      alert('Network error');
+      alert('Failed: ' + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -46,6 +77,45 @@ function CreatePostPage() {
             <div className="card">
               <div className="card-content">
                 <h2 className="title is-4">Create New Post</h2>
+                <div className="file is-light is-small has-name mt-3">
+                  <label className="file-label">
+                    <input
+                      className="file-input"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        const newFiles = Array.from(e.target.files);
+                        setSelectedFiles(prev => [...prev, ...newFiles].slice(0, 9));
+                        e.target.value = null;
+                      }}
+                    />
+                    <span className="file-cta">
+                      <span className="file-icon"><i className="fas fa-upload"></i></span>
+                      <span className="file-label">Choose images (max 9)</span>
+                    </span>
+                    {selectedFiles.length > 0 && (
+                      <span className="file-name">
+                        {selectedFiles.map(f => f.name).join(', ')}
+                      </span>
+                    )}
+                  </label>
+                </div>
+                {selectedFiles.length > 0 && (
+                  <div className="tags mt-1">
+                    {selectedFiles.map((file, idx) => (
+                      <span className="tag is-info is-light is-small" key={idx}>
+                        {file.name}
+                        <button
+                          className="delete is-small"
+                          onClick={() => {
+                            setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                        ></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <input
                   className="input mb-3"
                   placeholder="Title"

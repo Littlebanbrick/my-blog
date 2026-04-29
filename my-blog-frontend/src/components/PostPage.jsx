@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getComments, getCurrentUser, addComment } from '../utils';
+import { getComments, getCurrentUser, addComment, getImageUrl } from '../utils';
 import DOMPurify from 'dompurify';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -14,6 +14,7 @@ function PostPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [likesUsers, setLikesUsers] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/me`, { credentials: "include" })
@@ -142,6 +143,50 @@ function PostPage() {
             __html: DOMPurify.sanitize((post.preview || "").replace(/\n/g, '<br>'))
           }}
         />
+
+        {post.images && post.images.length > 0 && (() => {
+          const validImages = (post.images || []).filter(url => url && url.trim() !== '');
+          if (validImages.length === 0) return null;
+          return (
+            <div className="mt-3" style={{ textAlign: 'left' }}>
+              {validImages.length === 1 ? (
+                <figure className="image" style={{ maxWidth: '100%' }}>
+                  <img
+                    src={getImageUrl(validImages[0])}
+                    alt="post image"
+                    style={{ maxHeight: '400px', objectFit: 'contain', display: 'block'}}
+                    onClick={() => setSelectedImage(getImageUrl(validImages[0]))}
+                  />
+                </figure>
+              ) : (
+                <div className="columns is-multiline is-mobile">
+                  {validImages.map((url, idx) => (
+                    <div key={idx} className="column is-4">
+                      <figure className="image is-3by2">
+                        <img
+                          src={getImageUrl(url)}
+                          alt={`post-img-${idx}`}
+                          style={{ objectFit: 'cover', cursor: 'pointer' }}
+                          onClick={() => setSelectedImage(getImageUrl(url))}
+                        />
+                      </figure>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {selectedImage && (
+          <div className="modal is-active" onClick={() => setSelectedImage(null)} style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <div className="modal-background" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}></div>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: 'auto', maxWidth: '90vw', maxHeight: '90vh', margin: '0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <img src={selectedImage} alt="preview" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '4px' }} />
+            </div>
+            <button className="modal-close is-large" onClick={() => setSelectedImage(null)} style={{ position: 'fixed', top: '1rem', right: '1rem', backgroundColor: 'rgba(0,0,0,0.6)' }} />
+          </div>
+        )}
 
         {/* Liker list */}
         {likesUsers.length > 0 && (
