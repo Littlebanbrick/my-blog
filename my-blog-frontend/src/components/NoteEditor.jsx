@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { authFetch } from '../utils';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 function NoteEditor() {
   const { id } = useParams();

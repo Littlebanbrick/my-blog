@@ -4,7 +4,7 @@ import { getComments, getCurrentUser, addComment, getImageUrl, authFetch } from 
 import DOMPurify from 'dompurify';
 import Lightbox from './LightBox';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 function PostPage() {
   const { id } = useParams();

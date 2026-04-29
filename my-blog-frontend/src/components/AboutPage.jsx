@@ -7,7 +7,7 @@ function AboutPage() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    authFetchetch('http://localhost:8000/api/me', { credentials: 'include' })
+    authFetchetch('/api/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.code === 200) setUser(data.data);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { authFetch } from '../utils';
 
-const API_BASE = 'http://localhost:8000/api/admin/projects';
+const API_BASE = '/api/admin/projects';
 
 function ProjectEditor() {
   const { id } = useParams();
@@ -15,7 +15,7 @@ function ProjectEditor() {
 
   useEffect(() => {
     if (isEditing) {
-      authFetch(`http://localhost:8000/api/projects`)
+      authFetch(`/api/projects`)
         .then(res => res.json())
         .then(res => {
           const proj = (res.data || []).find(p => p.id === parseInt(id));

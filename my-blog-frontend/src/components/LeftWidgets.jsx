@@ -1,9 +1,6 @@
 // src/components/LeftWidgets.jsx
 import { useState, useEffect } from 'react'
-import myAvatar from '../assets/myAvatar.jpg' // Placeholder avatar image
 import { authFetch } from '../utils';
-
-const API_BASE = 'http://localhost:8000'
 
 function ProfileCard() {
   // Data for profile cards
@@ -14,7 +11,7 @@ function ProfileCard() {
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
 
   useEffect(() => {
-    authFetch(`${API_BASE}/api/profile`)
+    authFetch(`/api/profile`)
       .then(res => res.json())
       .then(data => {
         setProfile(data);
@@ -32,7 +29,7 @@ function ProfileCard() {
 
   const authFetchQuote = async () => {
     try {
-      const res = await authFetch('https://v1.hitokoto.cn/')
+      const res = await fetch('https://v1.hitokoto.cn/')
       const data = await res.json()
       setQuote({
         text: data.hitokoto,
@@ -116,13 +113,7 @@ function ProfileCard() {
           <div className="level-item has-text-centered flex-shrink-1">
             <div>
               <figure className="image is-128x128 mx-auto mb-2">
-                <img
-                  className="avatar is-rounded"
-                  src={profile.avatar || '/default-avatar.png'}
-                  alt="avatar"
-                  onClick={handleAvatarClick}
-                  style={{ cursor: 'pointer', transition: 'transform 0.8s ease', transform: `rotate(${rotation}deg)` }}
-                />
+                <img src="/myAvatar.jpg" alt="avatar" />
               </figure>
               <p className="title is-size-4 is-block" style={{ lineHeight: 'inherit' }}>
                 {profile.name}

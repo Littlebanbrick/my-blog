@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { getCurrentUser, getImageUrl, authFetch } from '../utils'
 
-const API_BASE = 'http://localhost:8000'
-
 function MomentList() {
   const [moments, setMoments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,7 +22,7 @@ function MomentList() {
     if (!window.confirm('Confirm to delete this post?')) return;
 
     try {
-      await authFetch(`${API_BASE}/api/admin/posts/${postId}`, {
+      await authFetch(`/api/admin/posts/${postId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -44,7 +42,7 @@ function MomentList() {
     if (!window.confirm('Confirm to delete this comment?')) return;
 
     try {
-      await authFetch(`${API_BASE}/api/admin/comments/${commentId}`, {
+      await authFetch(`/api/admin/comments/${commentId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -56,14 +54,14 @@ function MomentList() {
 
   useEffect(() => {
     setLoading(true)
-    authFetch(`${API_BASE}/api/posts`)
+    authFetch(`/api/posts`)
       .then(res => res.json())
       .then(async res => {
         const data = res.data || []
         setMoments(data)
 
         const statusPromises = data.map(post =>
-          authFetch(`${API_BASE}/api/posts/${post.id}/like_status`, {
+          authFetch(`/api/posts/${post.id}/like_status`, {
             credentials: 'include'
           })
           .then(res => res.json())
@@ -71,7 +69,7 @@ function MomentList() {
         )
 
         const commentPromises = data.map(post =>
-          authFetch(`${API_BASE}/api/posts/${post.id}/comments`)
+          authFetch(`/api/posts/${post.id}/comments`)
           .then(res => res.json())
           .then(c => ({ id: post.id, comments: c.data || c || [] }))
         )
@@ -98,7 +96,7 @@ function MomentList() {
     setIsLiking(true)
 
     try {
-      const res = await authFetch(`${API_BASE}/api/posts/${postId}/like`, {
+      const res = await authFetch(`/api/posts/${postId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

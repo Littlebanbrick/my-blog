@@ -26,7 +26,7 @@ function Header() {
   const handleLogout = async () => {
     // 调用后端 /api/logout 清除 cookie
     try {
-      await authFetch('http://localhost:8000/api/logout', {
+      await authFetch('/api/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -45,7 +45,7 @@ function Header() {
       <div className="container">
         <div className="navbar-brand">
           <Link className="navbar-item" to="/">
-            <img src="/src/assets/BRICK_ICON.png" alt="Logo" height="28" />
+            <img src="/BRICK_ICON.png" alt="Logo" height="28" />
           </Link>
 
           <a

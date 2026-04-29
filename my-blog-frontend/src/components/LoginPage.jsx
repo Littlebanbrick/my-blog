@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser, setAuthToken, authFetch } from '../utils';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 const LoginPage = () => {
   const [isAdminMode, setIsAdminMode] = useState(false);

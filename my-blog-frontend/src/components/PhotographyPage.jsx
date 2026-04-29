@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { getCurrentUser, authFetch, getImageUrl } from '../utils';
 import Lightbox from './LightBox';
 
-const API_BASE = 'http://localhost:8000/api';
-const ADMIN_API = 'http://localhost:8000/api/admin/photos';
+const API_BASE = '/api';
+const ADMIN_API = '/api/admin/photos';
 
 function PhotographyPage() {
   const [photos, setPhotos] = useState([]);

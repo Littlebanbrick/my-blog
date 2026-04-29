@@ -28,14 +28,21 @@ import yagmail
 import secrets
 
 # Login and registration
-from passlib.context import CryptContext
 from jose import jwt, JWTError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Password strength validation
 import bcrypt
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost", "http://localhost:80"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 load_dotenv()
 
@@ -48,7 +55,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "static/photos")
 os.makedirs(PHOTOS_DIR, exist_ok=True)
 
-NOTES_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/notes")
+NOTES_DIR = os.path.join(os.path.dirname(__file__), "static/notes")
 os.makedirs(NOTES_DIR, exist_ok=True)
 
 POST_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "static/uploads/posts")
@@ -96,14 +103,9 @@ class NoteCreate(BaseModel):
 class NoteUpdate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
     content: str = Body(..., min_length=1)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    
+def beijing_now():
+    return beijing_now(timezone(timedelta(hours=8)))
 
 def success(data=None, msg="Success"):
     return {
@@ -127,7 +129,7 @@ def count_words(text):
     return english_words + chinese_chars
 
 def get_current_time() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return beijing_now().strftime("%Y-%m-%d %H:%M:%S")
 
 async def check_post_exists(post_id: int) -> bool:
     query = posts.select().where(posts.c.id == post_id).with_only_columns(posts.c.id)
@@ -145,9 +147,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     jti = str(uuid.uuid4())
     to_encode.update({"jti": jti})
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = beijing_now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = beijing_now() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -499,7 +501,7 @@ async def register(user: UserRegister):
         hashed_pw = get_password_hash(user.password)
         verify_token = secrets.token_urlsafe(32)
         
-        expire_time = (datetime.utcnow() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
+        expire_time = (beijing_now() + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S")
 
         query = users.insert().values(
             username=user.username,
@@ -536,7 +538,7 @@ async def verify_email(token: str):
             return {"code": 400, "msg": "Invalid or expired token"}
 
         expire_time = datetime.strptime(expire_time_str, "%Y-%m-%d %H:%M:%S")
-        if datetime.utcnow() > expire_time:
+        if beijing_now() > expire_time:
             return {"code": 400, "msg": "Verification link expired (15min)"}
 
         await database.execute(
@@ -952,7 +954,7 @@ async def create_project(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = be().strftime("%Y-%m-%d %H:%M:%S")
     query = projects_table.insert().values(
         name=req.get("name"),
         desc=req.get("desc", ""),

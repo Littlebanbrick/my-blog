@@ -1,4 +1,4 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authFetch, getImageUrl } from '../utils';
 import Lightbox from './LightBox';
@@ -9,21 +9,21 @@ function RightWidgets() {
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    authFetch('http://localhost:8000/api/photos')
+    authFetch('/api/photos')
       .then(res => res.json())
       .then(res => {
         const all = res.data || [];
         setPhotos(all.slice(0, 4));
       });
 
-    authFetch('http://localhost:8000/api/notes')
+    authFetch('/api/notes')
       .then(res => res.json())
       .then(res => {
         const latest = (res.data || []).slice(0, 3);
         setNotes(latest.map(n => ({ id: n.id, title: n.title })));
       });
 
-    authFetch('http://localhost:8000/api/projects')
+    authFetch('/api/projects')
       .then(res => res.json())
       .then(res => setProjects(res.data || []))
       .catch(console.error);
