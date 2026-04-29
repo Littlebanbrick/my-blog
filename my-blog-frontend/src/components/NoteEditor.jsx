@@ -5,7 +5,7 @@ const API_BASE = 'http://localhost:8000/api';
 
 function NoteEditor() {
   const { id } = useParams();
-  const isEditing = id !== 'new';
+  const isEditing = id !== undefined && id !== 'new';
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
