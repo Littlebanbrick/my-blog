@@ -105,7 +105,7 @@ class NoteUpdate(BaseModel):
     content: str = Body(..., min_length=1)
     
 def beijing_now():
-    return beijing_now(timezone(timedelta(hours=8)))
+    return datetime.now(timezone(timedelta(hours=8)))
 
 def success(data=None, msg="Success"):
     return {
@@ -954,7 +954,7 @@ async def create_project(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    now = be().strftime("%Y-%m-%d %H:%M:%S")
+    now = beijing_now().strftime("%Y-%m-%d %H:%M:%S")
     query = projects_table.insert().values(
         name=req.get("name"),
         desc=req.get("desc", ""),

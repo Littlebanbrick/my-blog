@@ -113,7 +113,21 @@ function ProfileCard() {
           <div className="level-item has-text-centered flex-shrink-1">
             <div>
               <figure className="image is-128x128 mx-auto mb-2">
-                <img src="/myAvatar.jpg" alt="avatar" />
+                <img
+                  src="/myAvatar.jpg"
+                  alt="avatar"
+                  className="is-rounded"
+                  onClick={handleAvatarClick}
+                  style={{
+                    width: '128px',
+                    height: '128px',
+                    objectFit: 'cover',
+                    transform: `rotate(${rotation}deg)`,
+                    transition: 'transform 0.6s ease-in-out',
+                    cursor: 'pointer',
+                    borderRadius: '50%'
+                  }}
+                />
               </figure>
               <p className="title is-size-4 is-block" style={{ lineHeight: 'inherit' }}>
                 {profile.name}
