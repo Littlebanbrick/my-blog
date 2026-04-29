@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { authFetch } from '../utils';
 
 const API_BASE = "http://localhost:8000";
 
@@ -9,7 +10,7 @@ function WaitVerification() {
   useEffect(() => {
     const checkVerification = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/auth/check?username=${username}`);
+        const res = await authFetch(`${API_BASE}/api/auth/check?username=${username}`);
         const data = await res.json();
         
         if (data.is_verified) {

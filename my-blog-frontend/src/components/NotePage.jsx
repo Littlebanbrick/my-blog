@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getCurrentUser } from '../utils';
+import { getCurrentUser, authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -12,7 +12,7 @@ function NotePage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/notes/${id}`)
+    authFetch(`${API_BASE}/notes/${id}`)
       .then(res => res.json())
       .then(res => {
         if (res.code === 200) setNote(res.data);

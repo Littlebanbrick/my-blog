@@ -1,17 +1,31 @@
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from '../utils';
+import { getCurrentUser, authFetch, getImageUrl } from '../utils';
+import Lightbox from './LightBox';
 
 const API_BASE = 'http://localhost:8000/api';
 const ADMIN_API = 'http://localhost:8000/api/admin/photos';
 
 function PhotographyPage() {
   const [photos, setPhotos] = useState([]);
-  const [selectedImage, setSelectedImage] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+
+  const openLightbox = (index) => setLightboxIndex(index);
+  const closeLightbox = () => setLightboxIndex(null);
+
+  const prevImage = () => {
+    if (photos.length === 0) return;
+    setLightboxIndex(prev => (prev === 0 ? photos.length - 1 : prev - 1));
+  };
+
+  const nextImage = () => {
+    if (photos.length === 0) return;
+    setLightboxIndex(prev => (prev === photos.length - 1 ? 0 : prev + 1));
+  };
 
   useEffect(() => {
-    fetch(`${API_BASE}/photos`)
+    authFetch(`${API_BASE}/photos`)
       .then(res => res.json())
       .then(res => setPhotos(res.data || []))
       .catch(console.error);
@@ -29,7 +43,7 @@ function PhotographyPage() {
       const formData = new FormData();
       formData.append('file', file);
       try {
-        await fetch(`${ADMIN_API}/upload`, {
+        await authFetch(`${ADMIN_API}/upload`, {
           method: 'POST',
           credentials: 'include',
           body: formData,
@@ -40,14 +54,14 @@ function PhotographyPage() {
     }
     setUploading(false);
 
-    fetch(`${API_BASE}/photos`)
+    authFetch(`${API_BASE}/photos`)
       .then(res => res.json())
       .then(res => setPhotos(res.data || []));
   };
 
   const handleDelete = async (filename) => {
     if (!window.confirm('Delete this photo?')) return;
-    await fetch(`${ADMIN_API}/${filename}`, {
+    await authFetch(`${ADMIN_API}/${filename}`, {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -86,6 +100,7 @@ function PhotographyPage() {
 
           <div className="columns is-multiline">
             {photos.map((src, idx) => {
+              const fullSrc = getImageUrl ? getImageUrl(src) : src;
               const filename = src.split('/').pop();
               return (
                 <div key={src} className="column is-6-tablet is-4-desktop is-3-widescreen">
@@ -93,10 +108,10 @@ function PhotographyPage() {
                     <div className="card-image">
                       <figure className="image is-4by3">
                         <img
-                          src={src}
+                          src={fullSrc}
                           alt={`photo-${idx}`}
                           style={{ objectFit: 'cover' }}
-                          onClick={() => setSelectedImage(src)}
+                          onClick={() => openLightbox(idx)}
                         />
                       </figure>
                     </div>
@@ -118,22 +133,15 @@ function PhotographyPage() {
         </div>
       </section>
 
-      {selectedImage && (
-        <div
-          className="modal is-active"
-          onClick={() => setSelectedImage(null)}
-          style={{ alignItems: 'center', justifyContent: 'center' }}
-        >
-          <div className="modal-background" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}></div>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: 'auto', maxWidth: '95vw', maxHeight: '95vh', margin: '0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <img
-              src={selectedImage}
-              alt="preview"
-              style={{ maxWidth: '95vw', maxHeight: '95vh', objectFit: 'contain', borderRadius: '4px' }}
-            />
-          </div>
-          <button className="modal-close is-large" onClick={() => setSelectedImage(null)} style={{ position: 'fixed', top: '1rem', right: '1rem', backgroundColor: 'rgba(0,0,0,0.6)' }} />
-        </div>
+      {/* 新灯箱：只在 lightboxIndex 不为 null 时显示 */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={photos.map(p => getImageUrl ? getImageUrl(p) : p)}
+          currentIndex={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevImage}
+          onNext={nextImage}
+        />
       )}
     </>
   );

@@ -1,5 +1,7 @@
 import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
+import { authFetch, getImageUrl } from '../utils';
+import Lightbox from './LightBox';
 
 function RightWidgets() {
   const [photos, setPhotos] = useState([]);
@@ -7,21 +9,21 @@ function RightWidgets() {
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/photos')
+    authFetch('http://localhost:8000/api/photos')
       .then(res => res.json())
       .then(res => {
         const all = res.data || [];
         setPhotos(all.slice(0, 4));
       });
 
-    fetch('http://localhost:8000/api/notes')
+    authFetch('http://localhost:8000/api/notes')
       .then(res => res.json())
       .then(res => {
         const latest = (res.data || []).slice(0, 3);
         setNotes(latest.map(n => ({ id: n.id, title: n.title })));
       });
 
-    fetch('http://localhost:8000/api/projects')
+    authFetch('http://localhost:8000/api/projects')
       .then(res => res.json())
       .then(res => setProjects(res.data || []))
       .catch(console.error);
@@ -40,7 +42,12 @@ function RightWidgets() {
               {photos.map((src, idx) => (
                 <div className="column is-6" key={idx}>
                   <figure className="image is-square">
-                    <img src={src} alt={`preview-${idx}`} style={{ borderRadius: '4px', objectFit: 'cover', width: '100%', height: '100%' }} />
+                    <img
+                      src={getImageUrl(src)}
+                      alt={`photo-${idx}`}
+                      style={{ objectFit: 'cover' }}
+                      onClick={() => openLightbox(idx)}
+                    />
                   </figure>
                 </div>
               ))}

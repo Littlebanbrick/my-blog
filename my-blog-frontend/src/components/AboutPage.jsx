@@ -1,12 +1,13 @@
 // src/components/AboutPage.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 function AboutPage() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/me', { credentials: 'include' })
+    authFetchetch('http://localhost:8000/api/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.code === 200) setUser(data.data);

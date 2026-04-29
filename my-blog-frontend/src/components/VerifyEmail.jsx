@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 const API_BASE = "http://localhost:8000";
 
@@ -14,7 +15,7 @@ function VerifyEmail() {
       return;
     }
 
-    fetch(`${API_BASE}/api/verify-email?token=${token}`)
+    authFetch(`${API_BASE}/api/verify-email?token=${token}`)
       .then(res => res.json())
       .then(data => {
         setStatus(data.msg);

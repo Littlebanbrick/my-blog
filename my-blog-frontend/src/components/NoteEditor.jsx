@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -13,7 +14,7 @@ function NoteEditor() {
 
   useEffect(() => {
     if (isEditing) {
-      fetch(`${API_BASE}/notes/${id}`)
+      authFetch(`${API_BASE}/notes/${id}`)
         .then(res => res.json())
         .then(res => {
           if (res.code === 200) {
@@ -28,7 +29,7 @@ function NoteEditor() {
     setLoading(true);
     const method = isEditing ? 'PUT' : 'POST';
     const url = isEditing ? `${API_BASE}/admin/notes/${id}` : `${API_BASE}/admin/notes`;
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getCurrentUser } from '../utils'
+import { authFetch, getCurrentUser } from '../utils'
 
 function Header() {
   const [isActive, setIsActive] = useState(false)
@@ -26,7 +26,7 @@ function Header() {
   const handleLogout = async () => {
     // 调用后端 /api/logout 清除 cookie
     try {
-      await fetch('http://localhost:8000/api/logout', {
+      await authFetch('http://localhost:8000/api/logout', {
         method: 'POST',
         credentials: 'include'
       });

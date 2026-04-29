@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { getCurrentUser, getImageUrl } from '../utils'
+import { getCurrentUser, getImageUrl, authFetch } from '../utils'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -24,7 +24,7 @@ function MomentList() {
     if (!window.confirm('Confirm to delete this post?')) return;
 
     try {
-      await fetch(`${API_BASE}/api/admin/posts/${postId}`, {
+      await authFetch(`${API_BASE}/api/admin/posts/${postId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -44,7 +44,7 @@ function MomentList() {
     if (!window.confirm('Confirm to delete this comment?')) return;
 
     try {
-      await fetch(`${API_BASE}/api/admin/comments/${commentId}`, {
+      await authFetch(`${API_BASE}/api/admin/comments/${commentId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -56,14 +56,14 @@ function MomentList() {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_BASE}/api/posts`)
+    authFetch(`${API_BASE}/api/posts`)
       .then(res => res.json())
       .then(async res => {
         const data = res.data || []
         setMoments(data)
 
         const statusPromises = data.map(post =>
-          fetch(`${API_BASE}/api/posts/${post.id}/like_status`, {
+          authFetch(`${API_BASE}/api/posts/${post.id}/like_status`, {
             credentials: 'include'
           })
           .then(res => res.json())
@@ -71,7 +71,7 @@ function MomentList() {
         )
 
         const commentPromises = data.map(post =>
-          fetch(`${API_BASE}/api/posts/${post.id}/comments`)
+          authFetch(`${API_BASE}/api/posts/${post.id}/comments`)
           .then(res => res.json())
           .then(c => ({ id: post.id, comments: c.data || c || [] }))
         )
@@ -98,7 +98,7 @@ function MomentList() {
     setIsLiking(true)
 
     try {
-      const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
+      const res = await authFetch(`${API_BASE}/api/posts/${postId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

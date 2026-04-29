@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -9,7 +10,7 @@ function ProfilePage() {
 
   // Get user profile on component mount
   useEffect(() => {
-    fetch(`${API_BASE}/user/profile`, { credentials: 'include' })
+    authFetch(`${API_BASE}/user/profile`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.code === 200) setUser(data.data);
@@ -21,7 +22,7 @@ function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (!window.confirm('Confirm to delete your account? All data will be lost!')) return;
     
-    const res = await fetch(`${API_BASE}/user/delete`, {
+    const res = await authFetch(`${API_BASE}/user/delete`, {
       method: 'DELETE',
       credentials: 'include'
     });

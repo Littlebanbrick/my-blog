@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api/admin/projects';
 
@@ -14,7 +15,7 @@ function ProjectEditor() {
 
   useEffect(() => {
     if (isEditing) {
-      fetch(`http://localhost:8000/api/projects`)
+      authFetch(`http://localhost:8000/api/projects`)
         .then(res => res.json())
         .then(res => {
           const proj = (res.data || []).find(p => p.id === parseInt(id));
@@ -30,7 +31,7 @@ function ProjectEditor() {
   const handleSubmit = async () => {
     const method = isEditing ? 'PUT' : 'POST';
     const url = isEditing ? `${API_BASE}/${id}` : API_BASE;
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

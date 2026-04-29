@@ -17,6 +17,11 @@ import shutil
 import uuid
 import time
 from dotenv import load_dotenv
+import secrets
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Email verification
 import yagmail
@@ -40,7 +45,7 @@ ADMIN_SECRET_KEY = os.getenv("ADMIN_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
-PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/PHOTOGRAPHY")
+PHOTOS_DIR = os.path.join(os.path.dirname(__file__), "static/photos")
 os.makedirs(PHOTOS_DIR, exist_ok=True)
 
 NOTES_DIR = os.path.join(os.path.dirname(__file__), "../my-blog-frontend/src/assets/notes")
@@ -50,6 +55,10 @@ POST_IMAGES_DIR = os.path.join(os.path.dirname(__file__), "static/uploads/posts"
 os.makedirs(POST_IMAGES_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', 'nef'}
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
     raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.")
@@ -168,9 +177,6 @@ async def get_current_user(request: Request):
     except JWTError:
         raise credentials_exception
 
-    if username == "admin":
-        return TokenData(username=username, role=role)
-
     user_row = await database.fetch_one(users.select().where(users.c.username == username))
     if not user_row:
         raise credentials_exception
@@ -231,6 +237,12 @@ def send_verify_email(to_email: str, token: str):
         
 def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
+
+async def verify_csrf(request: Request):
+    csrf_cookie = request.cookies.get("csrf_token")
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
+        raise HTTPException(status_code=403, detail="CSRF validation failed")
 
 @app.on_event("startup")
 async def startup():
@@ -312,7 +324,8 @@ async def get_likes(post_id: int):
 @app.post("/api/posts/{post_id}/like")
 async def toggle_like(
     post_id: int,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     user_name = current_user.username
 
@@ -367,7 +380,9 @@ async def toggle_like(
     })
 
 @app.get("/api/posts/{post_id}/comments")
-async def get_comments(post_id: int):
+async def get_comments(
+    post_id: int
+):
     query = comments.select().where(comments.c.post_id == post_id).order_by(comments.c.created_at.asc())
     rows = await database.fetch_all(query)
     
@@ -388,7 +403,8 @@ async def get_comments(post_id: int):
 async def add_comment(
     post_id: int,
     req: CommentRequest,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     author = current_user.username
     now = get_current_time()
@@ -420,7 +436,11 @@ async def add_comment(
     return success(msg="Comment added")
 
 @app.delete("/api/admin/posts/{post_id}")
-async def admin_delete_post(post_id: int, current_user: TokenData = Depends(get_current_user)):    
+async def admin_delete_post(
+    post_id: int,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):    
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
@@ -532,7 +552,8 @@ async def verify_email(token: str):
         return {"code": 500, "msg": str(e)}
 
 @app.post("/api/login")
-async def login(user: UserLogin, response: Response):
+@limiter.limit("5/15min")
+async def login(user: UserLogin, response: Response, request: Request):
     try:
         user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
         
@@ -561,7 +582,22 @@ async def login(user: UserLogin, response: Response):
             path="/"
         )
 
-        return {"code": 200, "access_token": access_token, "token_type": "bearer"}
+        csrf_token = secrets.token_hex(32)
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,
+            secure=secure_flag,
+            samesite="Lax",
+            path="/"
+        )
+
+        return {
+            "code": 200,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "csrf_token": csrf_token
+        }
 
     except HTTPException as he:
         return {"code": he.status_code, "msg": he.detail}
@@ -586,6 +622,7 @@ async def admin_login(admin: AdminLogin, response: Response):
         )
 
         secure_flag = os.getenv("ENV", "development") == "production"
+
         response.set_cookie(
             key="access_token",
             value=token,
@@ -596,12 +633,24 @@ async def admin_login(admin: AdminLogin, response: Response):
             path="/"
         )
 
+        csrf_token = secrets.token_hex(32)
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=False,
+            secure=secure_flag,
+            samesite="Lax",
+            path="/"
+        )
+
         return {
             "code": 200,
             "token": token,
             "username": admin_user["username"],
-            "role": "admin"
+            "role": "admin",
+            "csrf_token": csrf_token
         }
+
     except HTTPException as he:
         return {"code": he.status_code, "msg": he.detail}
     except Exception as e:
@@ -691,7 +740,10 @@ async def delete_user(current_user: TokenData = Depends(get_current_user)):
     return response
 
 @app.post("/api/admin/posts/create")
-async def admin_create_post(post: PostCreate, current_user: TokenData = Depends(get_current_user)):
+async def admin_create_post(post: PostCreate,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403)
     if len(post.images) > 9:
@@ -716,7 +768,8 @@ async def admin_create_post(post: PostCreate, current_user: TokenData = Depends(
 @app.delete("/api/admin/comments/{comment_id}")
 async def admin_delete_comment(
     comment_id: int,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -738,7 +791,8 @@ async def admin_delete_comment(
 @app.post("/api/admin/photos/upload")
 async def upload_photo(
     file: UploadFile = File(...),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -752,7 +806,7 @@ async def upload_photo(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    url = f"/src/assets/PHOTOGRAPHY/{safe_name}"
+    url = f"/photos/{safe_name}"
     return success(data={"url": url})
 
 @app.get("/api/photos")
@@ -764,14 +818,15 @@ async def list_photos():
     photos = []
     for f in files:
         if allowed_file(f):
-            photos.append(f"/src/assets/PHOTOGRAPHY/{f}")
+            photos.append(f"/photos/{f}")
     photos.sort(reverse=True)
     return success(data=photos)
 
 @app.delete("/api/admin/photos/{filename}")
 async def delete_photo(
     filename: str,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -820,7 +875,10 @@ async def get_note(note_id: str):
     })
 
 @app.post("/api/admin/notes")
-async def create_note(note: NoteCreate, current_user: TokenData = Depends(get_current_user)):
+async def create_note(note: NoteCreate,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
@@ -837,7 +895,11 @@ async def create_note(note: NoteCreate, current_user: TokenData = Depends(get_cu
     return success(data={'id': note_id, 'title': note.title, 'content': note.content})
 
 @app.put("/api/admin/notes/{note_id}")
-async def update_note(note_id: str, note: NoteUpdate, current_user: TokenData = Depends(get_current_user)):
+async def update_note(note_id: str,
+    note: NoteUpdate,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     old_file = note_id + '.md'
@@ -864,7 +926,10 @@ async def update_note(note_id: str, note: NoteUpdate, current_user: TokenData = 
     return success(data={'id': final_id, 'title': note.title, 'content': note.content})
 
 @app.delete("/api/admin/notes/{note_id}")
-async def delete_note(note_id: str, current_user: TokenData = Depends(get_current_user)):
+async def delete_note(note_id: str,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     path = os.path.join(NOTES_DIR, note_id + '.md')
@@ -882,7 +947,8 @@ async def get_projects():
 @app.post("/api/admin/projects")
 async def create_project(
     req: dict,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -900,7 +966,8 @@ async def create_project(
 async def update_project(
     project_id: int,
     req: dict,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -915,7 +982,8 @@ async def update_project(
 @app.delete("/api/admin/projects/{project_id}")
 async def delete_project(
     project_id: int,
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -926,7 +994,8 @@ async def delete_project(
 @app.post("/api/admin/upload-post-image")
 async def upload_post_image(
     file: UploadFile = File(...),
-    current_user: TokenData = Depends(get_current_user)
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
 ):
     """ 上传帖子配图，管理员专用 """
     if current_user.role != "admin":
@@ -959,3 +1028,4 @@ async def http_exception_handler(request, exc):
     )
     
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/photos", StaticFiles(directory="static/photos"), name="photos")

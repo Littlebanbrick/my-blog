@@ -16,7 +16,7 @@ export function getAuthHeaders() {
 }
 
 export async function loginUser(username, password) {
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await authFetch(`${API_BASE}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: 'include',
@@ -26,7 +26,7 @@ export async function loginUser(username, password) {
 }
 
 export async function registerUser(username, email, password) {
-  const res = await fetch(`${API_BASE}/register`, {
+  const res = await authFetch(`${API_BASE}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: 'include',
@@ -41,7 +41,7 @@ export function setAuthToken(token) {
 
 export async function toggleLike(postId) {
   try {
-    const res = await fetch(`${API_BASE}/posts/${postId}/like`, {
+    const res = await authFetch(`${API_BASE}/posts/${postId}/like`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -56,7 +56,7 @@ export async function toggleLike(postId) {
 }
 
 export async function addComment(postId, content) {
-  const res = await fetch(`${API_BASE}/posts/${postId}/comments`, {
+  const res = await authFetch(`${API_BASE}/posts/${postId}/comments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -68,12 +68,12 @@ export async function addComment(postId, content) {
 }
 
 export async function getComments(postId) {
-  const res = await fetch(`${API_BASE}/posts/${postId}/comments`);
+  const res = await authFetch(`${API_BASE}/posts/${postId}/comments`);
   return await res.json();
 }
 
 export async function getCurrentUser() {
-  const res = await fetch(`${API_BASE}/me`, {
+  const res = await authFetch(`${API_BASE}/me`, {
     method: 'GET',
     headers: { "Content-Type": "application/json" },
     credentials: 'include'
@@ -87,4 +87,26 @@ export function getImageUrl(url) {
     return STATIC_BASE + url;
   }
   return url;
+}
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+export function authFetch(url, options = {}) {
+  const csrfToken = getCookie('csrf_token');
+
+  const headers = new Headers(options.headers || {});
+  if (csrfToken) {
+    headers.set('X-CSRF-Token', csrfToken);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 }

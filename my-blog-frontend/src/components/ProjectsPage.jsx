@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getCurrentUser } from '../utils';
+import { getCurrentUser, authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -9,7 +9,7 @@ function ProjectsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const loadProjects = () => {
-    fetch(`${API_BASE}/projects`)
+    authFetch(`${API_BASE}/projects`)
       .then(res => res.json())
       .then(res => setProjects(res.data || []))
       .catch(console.error);
@@ -24,7 +24,7 @@ function ProjectsPage() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this project?')) return;
-    await fetch(`${API_BASE}/admin/projects/${id}`, {
+    await authFetch(`${API_BASE}/admin/projects/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     });

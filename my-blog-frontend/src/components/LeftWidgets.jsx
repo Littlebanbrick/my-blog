@@ -1,6 +1,7 @@
 // src/components/LeftWidgets.jsx
 import { useState, useEffect } from 'react'
 import myAvatar from '../assets/myAvatar.jpg' // Placeholder avatar image
+import { authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000'
 
@@ -13,7 +14,7 @@ function ProfileCard() {
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/profile`)
+    authFetch(`${API_BASE}/api/profile`)
       .then(res => res.json())
       .then(data => {
         setProfile(data);
@@ -29,9 +30,9 @@ function ProfileCard() {
     setRotation(prev => prev + 360);
   };
 
-  const fetchQuote = async () => {
+  const authFetchQuote = async () => {
     try {
-      const res = await fetch('https://v1.hitokoto.cn/')
+      const res = await authFetch('https://v1.hitokoto.cn/')
       const data = await res.json()
       setQuote({
         text: data.hitokoto,
@@ -98,7 +99,7 @@ function ProfileCard() {
   }
 
   useEffect(() => {
-    fetchQuote()
+    authFetchQuote()
   }, [])
 
   
@@ -169,7 +170,7 @@ function ProfileCard() {
         {/* Hitokoto section (click to refresh) */}
         <div>
           <hr />
-          <span id="hitokoto" onClick={fetchQuote} style={{ cursor: 'pointer' }}>
+          <span id="hitokoto" onClick={authFetchQuote} style={{ cursor: 'pointer' }}>
             <strong style={{ color: '#000000' }}>{quote.text}</strong>
             {quote.from && (
               <div className="has-text-right">

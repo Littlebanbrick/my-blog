@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -20,7 +21,7 @@ function CreatePostPage() {
       for (const file of selectedFiles) {
         const formData = new FormData();
         formData.append('file', file);
-        const uploadRes = await fetch(`${API_BASE}/admin/upload-post-image`, {
+        const uploadRes = await authFetch(`${API_BASE}/admin/upload-post-image`, {
           method: 'POST',
           credentials: 'include',
           body: formData,
@@ -36,7 +37,7 @@ function CreatePostPage() {
         imageUrls.push(uploadData.data.url);
       }
 
-      const res = await fetch(`${API_BASE}/admin/posts/create`, {
+      const res = await authFetch(`${API_BASE}/admin/posts/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

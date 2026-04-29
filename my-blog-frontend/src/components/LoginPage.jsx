@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, setAuthToken } from '../utils';
+import { loginUser, setAuthToken, authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -17,7 +17,7 @@ const LoginPage = () => {
     setError('');
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/login`, {
+      const res = await authFetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -42,7 +42,7 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/admin/login`, {
+      const response = await authFetch(`${API_BASE}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

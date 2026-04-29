@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getCurrentUser } from '../utils';
+import { getCurrentUser, authFetch } from '../utils';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -9,7 +9,7 @@ function StudyNotesPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const loadNotes = () => {
-    fetch(`${API_BASE}/notes`)
+    authFetch(`${API_BASE}/notes`)
       .then(res => res.json())
       .then(res => setNotes(res.data || []))
       .catch(console.error);
@@ -24,7 +24,7 @@ function StudyNotesPage() {
 
   const handleDelete = async (noteId) => {
     if (!window.confirm('Delete this note?')) return;
-    await fetch(`${API_BASE}/admin/notes/${noteId}`, {
+    await authFetch(`${API_BASE}/admin/notes/${noteId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
