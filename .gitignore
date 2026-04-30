@@ -31,3 +31,5 @@ notes/
 static/
 
 node_modules/
+
+update.ps1

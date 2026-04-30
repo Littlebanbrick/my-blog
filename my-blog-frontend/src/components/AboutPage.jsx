@@ -1,149 +1,132 @@
 // src/components/AboutPage.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { authFetch } from '../utils';
 
 function AboutPage() {
   const [user, setUser] = useState(null);
+  const [typed, setTyped] = useState('');
+  const fullSentence = 'Hello, world! I build things for the web.';
+  const [counter, setCounter] = useState({ posts: 0, likes: 0, comments: 0 });
 
   useEffect(() => {
-    authFetch('/api/me', { credentials: 'include' })
+    // 获取当前用户（可选）
+    fetch('/api/me', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => { if (data.code === 200) setUser(data.data); })
+      .catch(() => {});
+
+    // 统计数字
+    fetch('/api/profile')
       .then(res => res.json())
       .then(data => {
-        if (data.code === 200) setUser(data.data);
+        setCounter({
+          posts: data.posts || 0,
+          likes: data.likes || 0,
+          comments: data.comments || 0,
+        });
       })
       .catch(() => {});
+
+    // 打字机效果
+    let idx = 0;
+    const interval = setInterval(() => {
+      if (idx < fullSentence.length) {
+        setTyped(fullSentence.slice(0, idx + 1));
+        idx++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 80);
+    return () => clearInterval(interval);
   }, []);
-
-  const todayCommit = `feat: implement sticky sidebar scrolling, nested comment replies, admin upload management for photos/notes/projects, fix post sorting, and improve overall UI/UX`;
-
-  const learningJournal = [
-    {
-      day: 'Day 1 – 基础布局与组件化',
-      content: `今天真正理解了 React 组件化的意义。把页面拆成 ProfileCard、MomentList、RightWidgets 这些独立零件，每个零件只关心自己的数据和样式，拼起来就是一个完整的博客。Bulma 的栅格系统用起来很像 Bootstrap，但更轻量，\`columns is-3\` 这种语义化类名让布局变得直观。不过 CSS 的 sticky 定位比想象中难调，父元素的 overflow 和 flex 会直接破坏粘性效果，折腾了好几个小时才让左右侧边栏在中间滚动时纹丝不动。`
-    },
-    {
-      day: 'Day 2 – 从假数据到真实 API',
-      content: `用 FastAPI 写了第一个接口，把硬编码在 React 里的假数据搬到了后端。配置 CORS 中间件就像在门口贴了一张许可告示，允许 5173 端口的小朋友进来拿数据。fetch 请求返回的 JSON 和之前定义的假数据结构一模一样，改三行代码就把整个首页的数据源切到了后端。虽然还只是从 Python 列表读取，但那种“数据真的在网络上多走了一圈”的感觉很奇妙。`
-    },
-    {
-      day: 'Day 3 – 数据库与动态交互',
-      content: `SQLite 比想象中友好，就是一个 .db 文件。用 SQLAlchemy 定义表结构，再用 databases 库做异步查询，代码量很少。实现了点赞切换和评论提交，发现前后端状态同步是个大坑——用户点赞后，另一个页面可能看不到变化，必须让两个页面都从后端拿最新数据。React 的 useEffect 依赖数组用好了，从详情页返回列表页会自动重新拉取文章和点赞状态，问题就解决了。`
-    },
-    {
-      day: 'Day 4 – 鉴权与文件管理',
-      content: `JWT 存在 httpOnly cookie 里防止 XSS，SameSite=Lax 挡住大部分 CSRF，再加上 bcrypt 哈希密码，感觉安全性勉强及格。但最实用的还是文件上传管理：用 FormData 把图片从前端直传到后端，后端写入 assets 目录，再返回 URL，管理员界面一下子就通透了。笔记和项目也都做了类似的 CRUD 接口，终于不用再手动改文件夹了。`
-    },
-    {
-      day: 'Day 5 – 全栈思维与工程化',
-      content: `整个流程走下来，最大的收获不是某个具体技术，而是明白了“全栈”到底在做什么：前端把界面画好，后端把数据存好，中间靠 HTTP 协议和 JSON 串起所有逻辑。踩过的坑——callback hell 变 async/await、组件重新渲染导致 token 被消费两次、sticky 失效排查父元素 overflow——每一个都逼着我去理解浏览器和框架的底层原理。现在再看到 GitHub 上别人的博客，大概能猜出它是怎么搭的了。`
-    }
-  ];
 
   return (
     <section className="section has-navbar-fixed-top">
       <div className="container">
-        <div className="card mb-5">
-          <div className="card-content">
-            <div className="media">
-              <div className="media-left">
-                <figure className="image is-128x128">
-                  <img
-                    className="is-rounded"
-                    src="/src/assets/BRICK_ICON.png"
-                    alt="Avatar"
-                  />
-                </figure>
-              </div>
-              <div className="media-content">
-                <p className="title is-3">Johnny Wang</p>
-                <p className="subtitle is-5 has-text-grey">Full-stack learner · Blogger · Open source enthusiast</p>
-                <div className="buttons">
-                  <a
-                    className="button is-small is-light"
-                    href="https://github.com/Littlebanbrick"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="icon"><i className="fab fa-github"></i></span>
-                    <span>GitHub</span>
-                  </a>
-                  <a
-                    className="button is-small is-light"
-                    href="https://space.bilibili.com/3546895630731348"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="icon"><i className="fa-brands fa-bilibili"></i></span>
-                    <span>Bilibili</span>
-                  </a>
-                  <a
-                    className="button is-small is-light"
-                    href="https://x.com/JohnnyWang5784"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="icon"><i className="fa-brands fa-x-twitter"></i></span>
-                    <span>Twitter</span>
-                  </a>
-                </div>
-              </div>
+        {/* 头部英雄区域 */}
+        <div className="hero is-medium is-dark is-bold mb-5" style={{ borderRadius: '12px', overflow: 'hidden' }}>
+          <div className="hero-body has-text-centered">
+            <h1 className="title is-2 has-text-white">Johnny Wang</h1>
+            <p className="subtitle is-5 mt-3" style={{ fontFamily: 'monospace', minHeight: '2rem' }}>
+              <span>{typed}</span><span className="is-blinking" style={{ opacity: 1, animation: 'blink 1s step-end infinite' }}>|</span>
+            </p>
+          </div>
+        </div>
+
+        {/* 个人简介卡片 */}
+        <div className="box mb-5" style={{ borderRadius: '8px' }}>
+          <div className="columns is-vcentered">
+            <div className="column is-narrow">
+              <figure className="image is-128x128">
+                <img className="is-rounded" src="/myAvatar.jpg" alt="avatar" />
+              </figure>
             </div>
-            <div className="content">
-              <p>
-                Welcome to my blog! I'm a university student who loves turning ideas into code. 
-                This site is built from scratch with React, FastAPI, and SQLite — a playground for learning 
-                and sharing what I've discovered along the way.
+            <div className="column">
+              <h2 className="title is-4">About Me</h2>
+              <p className="content">
+                I'm a university student and a self-taught full‑stack developer.
+                I built this blog from scratch using React, FastAPI, and SQLite – and yes, it's containerized with Docker.
+                I love turning ideas into real applications, breaking things, and fixing them back even better.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="card mb-5">
-          <div className="card-content">
-            <h2 className="title is-4">
-              <span className="icon-text">
-                <span className="icon"><i className="fas fa-code-branch"></i></span>
-                <span>Today's Commit</span>
-              </span>
-            </h2>
-            <div className="box has-background-dark has-text-white">
-              <pre className="has-text-white" style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                git commit -m "{todayCommit}"
-              </pre>
+        {/* 动态统计数字 */}
+        <div className="columns mb-5">
+          {[
+            { label: 'Posts', value: counter.posts, icon: 'fa-pencil' },
+            { label: 'Likes', value: counter.likes, icon: 'fa-heart' },
+            { label: 'Comments', value: counter.comments, icon: 'fa-comment-dots' },
+          ].map((stat, idx) => (
+            <div className="column is-4" key={idx}>
+              <div className="box has-text-centered" style={{ borderRadius: '8px', transition: 'transform 0.2s' }}
+                   onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                   onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                <span className="icon is-large has-text-primary"><i className={`fas ${stat.icon} fa-2x`}></i></span>
+                <p className="title is-3 mt-3 mb-1">{stat.value}</p>
+                <p className="heading">{stat.label}</p>
+              </div>
             </div>
+          ))}
+        </div>
+
+        {/* 技术栈展示 */}
+        <div className="box mb-5" style={{ borderRadius: '8px' }}>
+          <h3 className="title is-5 mb-4">Tools & Technologies</h3>
+          <div className="tags are-medium">
+            {['React', 'FastAPI', 'SQLite', 'Docker', 'Bulma', 'JavaScript', 'Python', 'Git', 'Nginx', 'Linux'].map(tech => (
+              <span key={tech} className="tag is-dark" style={{ margin: '4px' }}>{tech}</span>
+            ))}
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-content">
-            <h2 className="title is-4">
-              <span className="icon-text">
-                <span className="icon"><i className="fas fa-book-open"></i></span>
-                <span>Learning Journal: 5 Days of Building My Blog</span>
-              </span>
-            </h2>
-            <div className="content">
-              {learningJournal.map((entry, index) => (
-                <div key={index} className="mb-4">
-                  <h4 className="title is-5 mb-2">{entry.day}</h4>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{entry.content}</p>
-                </div>
-              ))}
-            </div>
+        {/* 社交媒体链接 */}
+        <div className="box has-text-centered" style={{ borderRadius: '8px' }}>
+          <h3 className="title is-5 mb-4">Find me on</h3>
+          <div className="buttons is-centered">
+            <a href="https://github.com/Littlebanbrick" className="button is-dark" target="_blank" rel="noopener noreferrer">
+              <span className="icon"><i className="fab fa-github"></i></span>
+              <span>GitHub</span>
+            </a>
+            <a href="https://space.bilibili.com/3546895630731348" className="button is-danger" target="_blank" rel="noopener noreferrer">
+              <span className="icon"><i className="fa-brands fa-bilibili"></i></span>
+              <span>Bilibili</span>
+            </a>
+            <a href="https://x.com/JohnnyWang5784" className="button is-link" target="_blank" rel="noopener noreferrer">
+              <span className="icon"><i className="fa-brands fa-x-twitter"></i></span>
+              <span>Twitter</span>
+            </a>
           </div>
-        </div>
-
-        <div className="mt-5">
-          <span className="tag is-dark mr-1">React</span>
-          <span className="tag is-dark mr-1">FastAPI</span>
-          <span className="tag is-dark mr-1">SQLite</span>
-          <span className="tag is-dark mr-1">Bulma</span>
-          <span className="tag is-dark mr-1">Docker</span>
-          <span className="tag is-dark mr-1">JavaScript</span>
-          <span className="tag is-dark mr-1">Python</span>
         </div>
       </div>
+
+      {/* 打字机闪烁动画样式 */}
+      <style>{`
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
     </section>
   );
 }
