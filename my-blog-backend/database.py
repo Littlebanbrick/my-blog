@@ -86,6 +86,17 @@ projects_table = sqlalchemy.Table(
     Column("created_at", String(20)),
 )
 
+# ========== Table of messages  ==========
+messages = sqlalchemy.Table(
+    "messages",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("sender_username", String(50)),
+    Column("content", Text, nullable=False),
+    Column("created_at", String(20)),
+    Column("is_read", Integer, default=0),
+)
+
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False}
@@ -133,6 +144,21 @@ def fix_missing_columns():
                 
             if not column_exists("post_images", "order"):
                 conn.execute(text("ALTER TABLE post_images ADD COLUMN order INTEGER"))
+                
+            if not column_exists("messages", "id"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN id INTEGER"))
+                
+            if not column_exists("messages", "sender_username"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN sender_username VARCHAR(50)"))
+                
+            if not column_exists("messages", "content"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN content VARCHAR(2000)"))
+                
+            if not column_exists("messages", "created_at"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN created_at VARCHAR(20)"))
+                
+            if not column_exists("messages", "is_read"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN is_read INTEGER DEFAULT 0"))
             
             conn.commit()
             print("All missing columns added successfully!")

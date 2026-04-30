@@ -89,33 +89,39 @@ function MomentList() {
   }, [location.pathname])
 
   const handleLike = async (e, postId) => {
-    e.stopPropagation()
-    e.preventDefault()
+    e.stopPropagation();
+    e.preventDefault();
 
-    if (isLiking) return
-    setIsLiking(true)
+    if (isLiking) return;
 
+    const userRes = await getCurrentUser();
+    if (!userRes?.data?.username) {
+      alert('Please login to like the post.');
+      return;
+    }
+
+    setIsLiking(true);
     try {
       const res = await authFetch(`/api/posts/${postId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (data?.data) {
-        setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }))
+        setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }));
         setMoments(prev =>
           prev.map(m =>
             m.id === postId ? { ...m, likes_count: data.data.likes_count } : m
           )
-        )
+        );
       }
     } catch (err) {
-      console.error('Like error:', err)
+      console.error('Like error:', err);
     } finally {
-      setIsLiking(false)
+      setIsLiking(false);
     }
-  }
+  };
 
   const toggleShowAll = (e, postId) => {
     e.stopPropagation()
@@ -129,124 +135,126 @@ function MomentList() {
 
   return (
     <>
-      {moments.map((item) => {
-        const isLiked = likedMap[item.id] || false
-        const rawComments = commentsMap[item.id]
-        const comments = Array.isArray(rawComments) ? rawComments : []
-        const showAll = showAllMap[item.id] || false
-        const displayedComments = showAll ? comments : comments.slice(0, 5)
+      <div className={loading ? '' : 'moment-slide-up'}>
+        {moments.map((item) => {
+          const isLiked = likedMap[item.id] || false
+          const rawComments = commentsMap[item.id]
+          const comments = Array.isArray(rawComments) ? rawComments : []
+          const showAll = showAllMap[item.id] || false
+          const displayedComments = showAll ? comments : comments.slice(0, 5)
 
-        return (
-          <Link
-            className="card"
-            to={`/post/${item.id}`}
-            key={item.id}
-            style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}
-            onContextMenu={(e) => handlePostRightClick(e, item.id)}
-          >
-            <article className="card-content article" role="article">
-              <div className="article-meta size-small is-uppercase level is-mobile">
-                <div className="level-left">
-                  <i className="fa-regular fa-calendar"></i>
-                  <span className="ml-1 mr-2">{item.date}</span>
+          return (
+            <Link
+              className="card"
+              to={`/post/${item.id}`}
+              key={item.id}
+              style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}
+              onContextMenu={(e) => handlePostRightClick(e, item.id)}
+            >
+              <article className="card-content article" role="article">
+                <div className="article-meta size-small is-uppercase level is-mobile">
+                  <div className="level-left">
+                    <i className="fa-regular fa-calendar"></i>
+                    <span className="ml-1 mr-2">{item.date}</span>
 
-                  <span
-                    className="icon-text is-align-items-center"
-                    style={{ cursor: 'pointer' }}
-                    onClick={(e) => handleLike(e, item.id)}
-                  >
-                    <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
-                       style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
-                    <span className="ml-1">{item.likes_count ?? 0}</span>
-                  </span>
+                    <span
+                      className="icon-text is-align-items-center"
+                      style={{ cursor: 'pointer' }}
+                      onClick={(e) => handleLike(e, item.id)}
+                    >
+                      <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
+                        style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
+                      <span className="ml-1">{item.likes_count ?? 0}</span>
+                    </span>
 
-                  <span className="commentCountImg ml-3">
-                    <i className="fa-regular fa-comment-dots"></i>
-                    <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
-                  </span>
+                    <span className="commentCountImg ml-3">
+                      <i className="fa-regular fa-comment-dots"></i>
+                      <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
+                    </span>
 
-                  <span className="level-item ml-3">
-                    <i className="fas fa-pencil-alt"></i>
-                    <span className="ml-1">{item.word_count ?? 0}</span>
-                  </span>
+                    <span className="level-item ml-3">
+                      <i className="fas fa-pencil-alt"></i>
+                      <span className="ml-1">{item.word_count ?? 0}</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
-              <div className="content"><p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p></div>
+                <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
+                <div className="content"><p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p></div>
 
-              {item.images && item.images.length > 0 && (
-                <div className="columns is-multiline is-mobile mt-2">
-                  {item.images.length === 1 ? (
-                    <div className="column is-12">
-                      <figure>
-                        <img
-                          src={getImageUrl(item.images[0])}
-                          alt="post image"
-                          style={{
-                            width: '100%',
-                            maxHeight: '300px',
-                            objectFit: 'contain',
-                            display: 'block',
-                          }}
-                        />
-                      </figure>
-                    </div>
-                  ) : (
-                    item.images.slice(0, 4).map((url, idx) => (
-                      <div key={idx} className="column is-6">
-                        <figure className="image is-square">
+                {item.images && item.images.length > 0 && (
+                  <div className="columns is-multiline is-mobile mt-2">
+                    {item.images.length === 1 ? (
+                      <div className="column is-12">
+                        <figure>
                           <img
-                            src={getImageUrl(url)}
-                            alt={`img-${idx}`}
-                            style={{ objectFit: 'cover' }}
+                            src={getImageUrl(item.images[0])}
+                            alt="post image"
+                            style={{
+                              width: '100%',
+                              maxHeight: '300px',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
                           />
                         </figure>
                       </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {item.location && (
-                <div className="index-category-tag">
-                  <div className="level-item">
-                    <i className="fa-solid fa-map-location-dot mr-2"></i>
-                    <span className="has-text-grey is-size-7">{item.location}</span>
+                    ) : (
+                      item.images.slice(0, 4).map((url, idx) => (
+                        <div key={idx} className="column is-6">
+                          <figure className="image is-square">
+                            <img
+                              src={getImageUrl(url)}
+                              alt={`img-${idx}`}
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </figure>
+                        </div>
+                      ))
+                    )}
                   </div>
-                </div>
-              )}
+                )}
 
-              {comments.length > 0 && (
-                <div className="comments-inline mt-3">
-                  {displayedComments.map(comment => (
-                    <div 
-                      key={comment.id} 
-                      className="media" 
-                      style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
-                      onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
-                    >
-                      <div className="media-content">
-                        <strong className="mr-2">{comment.author}:</strong>
-                        <span><i>{comment.content}</i></span>
-                      </div>
+                {item.location && (
+                  <div className="index-category-tag">
+                    <div className="level-item">
+                      <i className="fa-solid fa-map-location-dot mr-2"></i>
+                      <span className="has-text-grey is-size-7">{item.location}</span>
                     </div>
-                  ))}
+                  </div>
+                )}
 
-                  {comments.length > 5 && (
-                    <button
-                      className="button is-text is-small"
-                      onClick={(e) => toggleShowAll(e, item.id)}
-                    >
-                      {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
-                    </button>
-                  )}
-                </div>
-              )}
-            </article>
-          </Link>
-        )
-      })}
+                {comments.length > 0 && (
+                  <div className="comments-inline mt-3">
+                    {displayedComments.map(comment => (
+                      <div 
+                        key={comment.id} 
+                        className="media" 
+                        style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                        onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
+                      >
+                        <div className="media-content">
+                          <strong className="mr-2">{comment.author}:</strong>
+                          <span><i>{comment.content}</i></span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {comments.length > 5 && (
+                      <button
+                        className="button is-text is-small"
+                        onClick={(e) => toggleShowAll(e, item.id)}
+                      >
+                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </article>
+            </Link>
+          )
+        })}
+      </div>
     </>
   )
 }

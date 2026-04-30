@@ -84,6 +84,30 @@ function Header() {
           </div>
 
           <div className="navbar-end">
+            {user ? (
+              <div className="navbar-item">
+                <div className="buttons">
+                  {user.role === 'user' ? (
+                    <Link
+                      to="/contact"
+                      className="button is-light is-small"
+                      style={{ backgroundColor: '#8B0000', color: 'white' }}
+                    >
+                      Contact
+                    </Link>
+                  ) : (
+                  <Link
+                    to="/admin/messages"
+                    className="button is-light is-small"
+                    style={{ backgroundColor: '#8B0000', color: 'white' }}
+                  >
+                      View Messages
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {!user ? (
               <div className="navbar-item">
                 <div className="buttons">

@@ -38,8 +38,14 @@ function PostPage() {
   }, [id]);
 
   const handleLike = async () => {
+    const userRes = await getCurrentUser();
+    if (!userRes?.data?.username) {
+      alert('Please login to like the post.');
+      return;
+    }
+
     try {
-      const res = await authFetch(`${API_BASE}/posts/${id}/like`, {
+      const res = await authFetch(`/api/posts/${id}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -48,7 +54,7 @@ function PostPage() {
       if (data?.data) {
         setPost({ ...post, likes_count: data.data.likes_count });
         setIsLiked(data.data.liked);
-        authFetch(`${API_BASE}/posts/${id}/likes`)
+        authFetch(`/api/posts/${id}/likes`)
           .then(r => r.json())
           .then(res => setLikesUsers(res.data || []));
       }
@@ -59,11 +65,18 @@ function PostPage() {
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
+
+    const userRes = await getCurrentUser();
+    if (!userRes?.data?.username) {
+      alert('Please login to comment.');
+      return;
+    }
+
     const body = { content: newComment };
     if (replyTo) body.parent_id = replyTo.id;
 
     try {
-      await authFetch(`${API_BASE}/posts/${id}/comments`, {
+      await authFetch(`/api/posts/${id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

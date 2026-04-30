@@ -51,8 +51,25 @@ a:hover {
   margin-bottom: 1.5rem;
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.moment-slide-up {
+  animation: slideUp 1.0s ease-out forwards;
+}
+
 .sticky-sidebar {
   position: sticky;
   top: 4.5rem;
   align-self: flex-start;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
 }

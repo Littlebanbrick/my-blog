@@ -3,11 +3,9 @@ import { useState, useEffect } from 'react'
 import { authFetch } from '../utils';
 
 function ProfileCard() {
-  // Data for profile cards
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [rotation, setRotation] = useState(0)
-  // State for hitokoto (dynamic quote)
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
 
   useEffect(() => {
@@ -45,6 +43,10 @@ function ProfileCard() {
     }
   }
 
+  useEffect(() => {
+    authFetchQuote()
+  }, [])
+
   function LinksCard() {
     return (
       <div className="card widget">
@@ -61,8 +63,8 @@ function ProfileCard() {
                 <span className="level-right">
                   <span className="level-item tag"
                     style={{
-                      width: '100px',       
-                      textAlign: 'center', 
+                      width: '100px',
+                      textAlign: 'center',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
@@ -79,7 +81,7 @@ function ProfileCard() {
                 <span className="level-right">
                   <span className="level-item tag"
                     style={{
-                      width: '100px',       
+                      width: '100px',
                       textAlign: 'center',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -95,103 +97,100 @@ function ProfileCard() {
     );
   }
 
-  useEffect(() => {
-    authFetchQuote()
-  }, [])
-
-  
   if (loading) {
-    return <div className="card"><div className="card-content">Loading profile...</div></div>;
+    return <div className="card widget"><div className="card-content">Loading profile...</div></div>;
   }
 
   return (
     <>
-    <div className="card widget" data-type="profile">
-      <div className="card-content">
-        {/* Avatar and basic info */}
-        <nav className="level">
-          <div className="level-item has-text-centered flex-shrink-1">
-            <div>
-              <figure className="image is-128x128 mx-auto mb-2">
-                <img
-                  src="/myAvatar.jpg"
-                  alt="avatar"
-                  className="is-rounded"
-                  onClick={handleAvatarClick}
-                  style={{
-                    width: '128px',
-                    height: '128px',
-                    objectFit: 'cover',
-                    transform: `rotate(${rotation}deg)`,
-                    transition: 'transform 0.6s ease-in-out',
-                    cursor: 'pointer',
-                    borderRadius: '50%'
-                  }}
-                />
-              </figure>
-              <p className="title is-size-4 is-block" style={{ lineHeight: 'inherit' }}>
-                {profile.name}
-              </p>
-              <p className="is-size-6 is-block">{profile.motto}</p>
-              <p className="is-size-6 is-flex is-justify-content-center">
-                <i
-                    className="fa-solid fa-location-dot mr-1 is-size-7"
-                    style={{ position: 'relative', top: '5px' }}
-                ></i>
-                <span>{profile.location}</span>
-              </p>
+    <div className={loading ? '' : 'moment-slide-up'}>
+      <div className="card widget" data-type="profile">
+        <div className="card-content">
+          {/* Avatar and basic info */}
+          <nav className="level">
+            <div className="level-item has-text-centered flex-shrink-1">
+              <div>
+                <figure className="image is-128x128 mx-auto mb-2">
+                  <img
+                    src="/myAvatar.jpg"
+                    alt="avatar"
+                    className="is-rounded"
+                    onClick={handleAvatarClick}
+                    style={{
+                      width: '128px',
+                      height: '128px',
+                      objectFit: 'cover',
+                      transform: `rotate(${rotation}deg)`,
+                      transition: 'transform 0.6s ease-in-out',
+                      cursor: 'pointer',
+                      borderRadius: '50%'
+                    }}
+                  />
+                </figure>
+                <p className="title is-size-4 is-block" style={{ lineHeight: 'inherit' }}>
+                  {profile.name}
+                </p>
+                <p className="is-size-6 is-block">{profile.motto}</p>
+                <p className="is-size-6 is-flex is-justify-content-center">
+                  <i
+                      className="fa-solid fa-location-dot mr-1 is-size-7"
+                      style={{ position: 'relative', top: '5px' }}
+                  ></i>
+                  <span>{profile.location}</span>
+                </p>
+              </div>
             </div>
+          </nav>
+
+          {/* Stats: Posts, Likes, Comments */}
+          <nav className="level is-mobile">
+            <div className="level-item has-text-centered is-marginless">
+              <div style={{ minWidth: '60px' }}>
+                <p className="heading">Posts</p>
+                <a href="/archives/">
+                  <p className="title">{profile.posts}</p>
+                </a>
+              </div>
+            </div>
+            <div className="level-item has-text-centered is-marginless">
+              <div style={{ minWidth: '60px' }}>
+                <p className="heading">Likes</p>
+                <a href="/archives/">
+                  <p className="title">{profile.likes}</p>
+                </a>
+              </div>
+            </div>
+            <div className="level-item has-text-centered is-marginless">
+              <div style={{ minWidth: '60px' }}>
+                <p className="heading">Comments</p>
+                <a href="/archives/">
+                  <p className="title">{profile.comments}</p>
+                </a>
+              </div>
+            </div>
+          </nav>
+
+          {/* Hitokoto section (click to refresh) */}
+          <div>
+            <hr />
+            <span id="hitokoto" onClick={authFetchQuote} style={{ cursor: 'pointer' }}>
+              <strong style={{ color: '#000000' }}>{quote.text}</strong>
+              {quote.from && (
+                <div className="has-text-right">
+                  — From《{quote.from}》
+                </div>
+              )}
+              {quote.author && (
+                <div className="has-text-right">
+                  Provider: {quote.author}
+                </div>
+              )}
+            </span>
           </div>
-        </nav>
-
-        {/* Stats: Posts, Likes, Comments */}
-        <nav className="level is-mobile">
-        <div className="level-item has-text-centered is-marginless">
-            <div style={{ minWidth: '60px' }}>
-            <p className="heading">Posts</p>
-            <a href="/archives/">
-                <p className="title">{profile.posts}</p>
-            </a>
-            </div>
-        </div>
-        <div className="level-item has-text-centered is-marginless">
-            <div style={{ minWidth: '60px' }}>
-            <p className="heading">Likes</p>
-            <a href="/archives/">
-                <p className="title">{profile.likes}</p>
-            </a>
-            </div>
-        </div>
-        <div className="level-item has-text-centered is-marginless">
-            <div style={{ minWidth: '60px' }}>
-            <p className="heading">Comments</p>
-            <a href="/archives/">
-                <p className="title">{profile.comments}</p>
-            </a>
-            </div>
-        </div>
-        </nav>
-
-        {/* Hitokoto section (click to refresh) */}
-        <div>
-          <hr />
-          <span id="hitokoto" onClick={authFetchQuote} style={{ cursor: 'pointer' }}>
-            <strong style={{ color: '#000000' }}>{quote.text}</strong>
-            {quote.from && (
-              <div className="has-text-right">
-                — From《{quote.from}》
-              </div>
-            )}
-            {quote.author && (
-              <div className="has-text-right">
-                Provider: {quote.author}
-              </div>
-            )}
-          </span>
         </div>
       </div>
+      <LinksCard />
     </div>
-    < LinksCard />
     </>
   )
 }

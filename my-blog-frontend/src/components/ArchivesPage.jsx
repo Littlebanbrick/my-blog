@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { authFetch, getCurrentUser, getImageUrl } from '../utils';
 
-const API_BASE = 'http://localhost:8000';
-
 function ArchivesPage() {
   const [posts, setPosts] = useState([]);
   const [order, setOrder] = useState('desc');
 
   useEffect(() => {
-    authFetch(`${API_BASE}/api/posts`)
+    authFetch(`/api/posts`)
       .then(res => res.json())
       .then(res => setPosts(res.data || []))
       .catch(console.error);
@@ -26,7 +24,7 @@ function ArchivesPage() {
     if (userRes.data?.role !== 'admin') return;
     if (!window.confirm('Confirm to delete this post?')) return;
     try {
-      const res = await authFetch(`${API_BASE}/admin/posts/${postId}`, {
+      const res = await authFetch(`/admin/posts/${postId}`, {
         method: 'DELETE',
         credentials: 'include'
       });

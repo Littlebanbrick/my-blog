@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { authFetch } from '../utils';
 
-const API_BASE = "http://localhost:8000";
-
 function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -15,7 +13,7 @@ function VerifyEmail() {
       return;
     }
 
-    authFetch(`${API_BASE}/api/verify-email?token=${token}`)
+    authFetch(`/api/verify-email?token=${token}`)
       .then(res => res.json())
       .then(data => {
         setStatus(data.msg);
@@ -26,9 +24,19 @@ function VerifyEmail() {
   }, [token]);
 
   return (
-    <div style={{ padding: "50px", textAlign: "center" }}>
-      <h1>{status}</h1>
-    </div>
+    <section className="section has-navbar-fixed-top">
+      <div className="container">
+        <div className="columns is-centered">
+          <div className="column is-6">
+            <div className="card">
+              <div className="card-content" style={{ textAlign: "center", padding: "3rem" }}>
+                <h1 className="title is-4">{status}</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

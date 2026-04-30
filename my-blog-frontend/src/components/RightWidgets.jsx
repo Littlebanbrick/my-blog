@@ -7,6 +7,7 @@ function RightWidgets() {
   const [photos, setPhotos] = useState([]);
   const [notes, setNotes] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     authFetch('/api/photos')
@@ -14,24 +15,33 @@ function RightWidgets() {
       .then(res => {
         const all = res.data || [];
         setPhotos(all.slice(0, 4));
+        setLoading(false);
       });
 
     authFetch('/api/notes')
       .then(res => res.json())
       .then(res => {
-        const latest = (res.data || []).slice(0, 3);
+        const latest = (res.data || []);
         setNotes(latest.map(n => ({ id: n.id, title: n.title })));
+        setLoading(false);
       });
 
     authFetch('/api/projects')
       .then(res => res.json())
-      .then(res => setProjects(res.data || []))
+      .then(res => {
+        setProjects(res.data || [])
+        setLoading(false);
+      })
       .catch(console.error);
   }, []);
 
+  if (loading) {
+    return <div className="card"><div className="card-content">Loading moments...</div></div>
+  }
+
   return (
     <>
-      {/* Photography Block */}
+    <div className={loading ? '' : 'moment-slide-up'}>
       <Link to="/photography" style={{ color: 'inherit', textDecoration: 'none' }}>
         <div className="card widget">
           <div className="card-content">
@@ -61,7 +71,7 @@ function RightWidgets() {
         <div className="card-content">
           <h3 className="menu-label mb-2">
             <Link to="/study-notes" style={{ color: 'inherit', textDecoration: 'none' }}>
-              <i className="fas fa-book mr-2"></i>Study Notes
+              <i className="fas fa-book mr-2 mb-2"></i>Study Notes
             </Link>
           </h3>
           <ul className="menu-list">
@@ -69,12 +79,12 @@ function RightWidgets() {
               <li key={note.id}>
                 <Link to={`/study-notes/${note.id}`} className="level is-mobile">
                   <span
-                    className="level-left"
+                    className="level-left mb-2"
                     style={{ flex: 1, wordBreak: 'break-word', marginRight: '0.6rem' }}
                   >
                     {note.title}
                   </span>
-                  <span className="level-right is-size-7 has-text-grey-light">Note</span>
+                  <span className="level-right is-size-7 has-text-grey-light mb-2">Note</span>
                 </Link>
               </li>
             ))}
@@ -102,6 +112,7 @@ function RightWidgets() {
           ))}
         </div>
       </div>
+    </div>
     </>
   );
 }

@@ -8,7 +8,7 @@ from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Resp
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
-from database import database, posts, comments, likes, users, projects_table, post_images
+from database import database, posts, comments, likes, users, projects_table, post_images, messages
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy import func, select, and_, desc
 from pydantic import BaseModel, EmailStr
@@ -33,6 +33,9 @@ from datetime import datetime, timedelta, timezone
 
 # Password strength validation
 import bcrypt
+
+# Automatically eliminate unverified users
+import asyncio
 
 app = FastAPI()
 
@@ -103,6 +106,10 @@ class NoteCreate(BaseModel):
 class NoteUpdate(BaseModel):
     title: str = Body(..., min_length=1, max_length=200)
     content: str = Body(..., min_length=1)
+    
+class MessageCreate(BaseModel):
+    content: str = Body(..., min_length=1, max_length=1000)
+    anonymous: bool = Body(False)
     
 def beijing_now():
     return datetime.now(timezone(timedelta(hours=8)))
@@ -194,7 +201,7 @@ def send_verify_email(to_email: str, token: str):
             print("WARNING: Email credentials not set. Skipping email sending.")
             return
 
-        verify_url = f"http://localhost:5173/verify-email?token={token}"
+        verify_url = f"http://localhost/verify-email?token={token}"
 
         yag = yagmail.SMTP(
             user=sender_email,
@@ -214,10 +221,8 @@ def send_verify_email(to_email: str, token: str):
                 <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 16px 0;">Hello,</p>
                 <p style="font-size:15px; color:#333; line-height:1.6; margin:0 0 28px 0;">Please click the button below to activate your blog account.</p>
                 
-                <div style="text-align:center; margin:36px 0;">
-                    <a href="{verify_url}" style="display:inline-block; padding:13px 28px; background:#444444; color:#fff; border-radius:6px; text-decoration:none; font-size:15px; font-weight:500;">
-                        Activate Account
-                    </a>
+                <div style="text-align:center; margin:36px 36px;">
+                    <a href="{verify_url}" style="display:inline-block;padding:13px 28px;background:#444444;color:#fff;border-radius:6px;text-decoration:none;font-size:15px;font-weight:500;line-height:1;mso-line-height-rule:exactly;">Activate Account</a>
                 </div>
 
                 <p style="font-size:13px; color:#666; margin-bottom:8px;">If the button doesn't work, copy and open this link:</p>
@@ -241,14 +246,33 @@ def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
 
 async def verify_csrf(request: Request):
+    if request.method == "OPTIONS":
+        return
     csrf_cookie = request.cookies.get("csrf_token")
     csrf_header = request.headers.get("X-CSRF-Token")
+    print("=== CSRF DEBUG ===")
+    print("Cookie:", repr(csrf_cookie))
+    print("Header:", repr(csrf_header))
+    print("Equal?", csrf_cookie == csrf_header)
     if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
         raise HTTPException(status_code=403, detail="CSRF validation failed")
+    
+async def cleanup_unverified_users():
+    while True:
+        await asyncio.sleep(60)  # Check for every minute
+        now = beijing_now().strftime("%Y-%m-%d %H:%M:%S")
+        delete_query = users.delete().where(
+            and_(
+                users.c.is_verified == 0,
+                users.c.verify_token_expire < now
+            )
+        )
+        await database.execute(delete_query)
 
 @app.on_event("startup")
 async def startup():
     await database.connect()
+    asyncio.create_task(cleanup_unverified_users())
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -537,7 +561,8 @@ async def verify_email(token: str):
         if not expire_time_str:
             return {"code": 400, "msg": "Invalid or expired token"}
 
-        expire_time = datetime.strptime(expire_time_str, "%Y-%m-%d %H:%M:%S")
+        bj_tz = timezone(timedelta(hours=8))
+        expire_time = datetime.strptime(expire_time_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=bj_tz)
         if beijing_now() > expire_time:
             return {"code": 400, "msg": "Verification link expired (15min)"}
 
@@ -676,12 +701,12 @@ async def check_verify(username: str):
 
 @app.get("/wait-verification")
 async def wait_verification():
-    return RedirectResponse("http://localhost:5173/wait-verification")
+    return RedirectResponse("http://localhost/wait-verification")
 
 @app.get("/verify-email")
 async def verify_email_page(request: Request):
     token = request.query_params.get("token", "")
-    return RedirectResponse(f"http://localhost:5173/verify-email?token={token}")
+    return RedirectResponse(f"http://localhost/verify-email?token={token}")
 
 @app.get("/api/user/profile")
 async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
@@ -1016,11 +1041,51 @@ async def upload_post_image(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        url = f"http://localhost:8000/static/uploads/posts/{safe_name}"
+        url = f"/static/uploads/posts/{safe_name}"
         return success(data={"url": url})
     except Exception as e:
         print("Upload post image error:", repr(e))
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+@app.post("/api/messages")
+async def send_message(
+    req: MessageCreate,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
+    sender = "Anonymous" if req.anonymous else current_user.username
+    now = get_current_time()
+    query = messages.insert().values(
+        sender_username=sender,
+        content=req.content,
+        created_at=now,
+        is_read=0
+    )
+    await database.execute(query)
+    return success(msg="Message sent")
+
+@app.get("/api/admin/messages")
+async def get_messages(
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = messages.select().order_by(messages.c.created_at.desc())
+    rows = await database.fetch_all(query)
+    return success(data=[dict(row) for row in rows])
+
+@app.put("/api/admin/messages/{message_id}/read")
+async def mark_read(message_id: int,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    await database.execute(
+        messages.update().where(messages.c.id == message_id).values(is_read=1)
+    )
+    return success(msg="Marked as read")
     
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
