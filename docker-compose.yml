@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: .                  # 构建上下文为根目录
+      context: .
       dockerfile: my-blog-backend/Dockerfile
     ports:
       - "8000:8000"
@@ -9,16 +9,16 @@ services:
       - ./data:/app/data
       - static_data:/app/static
     environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}          # 从 .env 文件或环境变量读取
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
-      - SENDER_EMAIL=${SENDER_EMAIL}               # 可选
+      - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_AUTH_CODE=${SENDER_AUTH_CODE}
-      - ENV=production
+      - ENV=development   # 到时候记得改回来！！！！！！！！！
     restart: unless-stopped
 
   frontend:
     build:
-      context: .                  # 同样使用根目录上下文
+      context: .
       dockerfile: my-blog-frontend/Dockerfile
     ports:
       - "80:80"
