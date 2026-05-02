@@ -21,10 +21,10 @@ function HomePage() {
     <section className="section has-navbar-fixed-top">
       <div className="container">
         <div className="columns">
-          <div className="column is-4 sticky-sidebar pt-2">
+          <div className="column is-5 sticky-sidebar pt-2">
             <ProfileCard />
           </div>
-          <div className="column is-5 pt-3">
+          <div className="column is-4 pt-3">
             <MomentList onLike={handleLike} />
           </div>
           <div className="column is-3 sticky-sidebar pt-2">
