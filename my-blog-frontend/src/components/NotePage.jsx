@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { getCurrentUser, authFetch } from '../utils';
 
 const API_BASE = '/api';
@@ -39,8 +40,13 @@ function NotePage() {
             </div>
           )}
         </div>
-        <div className="content markdown-body" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '6px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
+        <div className="content markdown-body" style={{ maxWidth: '80%', backgroundColor: '#fff', padding: '2rem', borderRadius: '6px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
+          >
+            {note.content}
+          </ReactMarkdown>
         </div>
       </div>
     </section>
