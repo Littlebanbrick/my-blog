@@ -1,29 +1,34 @@
-// src/components/MessagesPage.jsx
+// src/components/MyMessagesPage.jsx
 import { useState, useEffect, useRef } from 'react';
-import { authFetch } from '../utils';
+import { useNavigate, Link } from 'react-router-dom';
+import { authFetch, getCurrentUser } from '../utils';
 
-const ADMIN_NAME = '小BAN砖'
-
-function MessagesPage() {
+function MyMessagesPage() {
   const [messages, setMessages] = useState([]);
   const [activeRootId, setActiveRootId] = useState(null);
   const [conversation, setConversation] = useState([]);
   const [replyText, setReplyText] = useState('');
+  const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    getCurrentUser().then(res => {
+      if (res.data?.username) setUser(res.data);
+      else navigate('/login');
+    });
+  }, [navigate]);
 
   const fetchMessages = async () => {
-    const res = await authFetch('/api/admin/messages');
+    const res = await authFetch('/api/messages/my');
     const data = await res.json();
     if (data.code === 200) setMessages(data.data);
   };
 
-  useEffect(() => { fetchMessages(); }, []);
+  useEffect(() => { if (user) fetchMessages(); }, [user]);
 
   useEffect(() => {
-    const onFocus = () => {
-      fetchMessages();
-      window.refreshUnread && window.refreshUnread();
-    };
+    const onFocus = () => fetchMessages();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
@@ -37,64 +42,51 @@ function MessagesPage() {
   const handleSelectRoot = async (msg) => {
     setActiveRootId(msg.id);
     loadConversation(msg.id);
-    await authFetch(`/api/admin/messages/${msg.id}/read`, { method: 'PUT' });
+    await authFetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
     setMessages(prev =>
-      prev.map(m => m.id === msg.id ? { ...m, is_read: 1, unread_replies: 0 } : m)
+        prev.map(m => m.id === msg.id ? { ...m, unread_replies: 0 } : m)
     );
-    window.refreshUnread && window.refreshUnread();     // 主动刷新Header
+    window.refreshUnread && window.refreshUnread();
   };
 
-  const handleAdminReply = async () => {
+  const handleUserReply = async () => {
     if (!replyText.trim() || !activeRootId) return;
-    await authFetch(`/api/admin/messages/${activeRootId}/reply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ content: replyText })
+    await authFetch(`/api/messages/${activeRootId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: replyText })
     });
     setReplyText('');
     loadConversation(activeRootId);
-    window.refreshUnread && window.refreshUnread();     // 主动刷新Header
+    window.refreshUnread && window.refreshUnread();
   };
 
-  const handleDeleteMessage = async (e, msgId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!window.confirm('Delete this message and its replies?')) return;
-    await authFetch(`/api/admin/messages/${msgId}`, { method: 'DELETE' });
-    if (activeRootId === msgId) {
-      setActiveRootId(null);
-      setConversation([]);
-    }
-    fetchMessages();
-  };
-
-  // Automatically find the buttom of the conversation
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
+
+  if (!user) return <section className="section"><div className="container">Loading...</div></section>;
 
   return (
     <section className="section has-navbar-fixed-top">
       <div className="container">
         <div className="columns">
-          {/* 左侧：根消息列表 */}
+          {/* 左侧：我的根消息 */}
           <div className="column is-4">
-            <h2 className="title is-4 mb-3">Inbox</h2>
+            <h2 className="title is-4 mb-3">My Messages</h2>
             <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              {messages.length === 0 && <p className="has-text-grey">No messages.</p>}
+              {messages.length === 0 && <p className="has-text-grey">No messages yet.</p>}
               {messages.map(msg => (
                 <div
                   key={msg.id}
                   className={`card mb-2 ${msg.id === activeRootId ? 'has-background-light' : ''}`}
                   onClick={() => handleSelectRoot(msg)}
-                  onContextMenu={(e) => handleDeleteMessage(e, msg.id)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="card-content" style={{ padding: '0.75rem' }}>
                     <p className="is-size-7 has-text-weight-semibold">
-                      {msg.sender_username}
-                      {!msg.is_read && <span className="tag is-danger is-small ml-2">New</span>}
+                      To Admin
                       {msg.unread_replies > 0 && (
                         <span className="tag is-warning is-small ml-1">
                           {msg.unread_replies} new reply
@@ -118,7 +110,7 @@ function MessagesPage() {
                     <div
                       key={msg.id}
                       className="mb-3"
-                      style={{ textAlign: msg.sender_username === ADMIN_NAME ? 'right' : 'left' }}
+                      style={{ textAlign: msg.sender_username === user.username ? 'right' : 'left' }}
                     >
                       <div
                         style={{
@@ -126,8 +118,8 @@ function MessagesPage() {
                           maxWidth: '80%',
                           padding: '8px 14px',
                           borderRadius: '12px',
-                          background: msg.sender_username === ADMIN_NAME ? '#f5f5f5' : '#3273dc',
-                          color: msg.sender_username === ADMIN_NAME ? '#333' : '#fff',
+                          background: msg.sender_username === user.username ? '#3273dc' : '#f5f5f5',
+                          color: msg.sender_username === user.username ? '#fff' : '#333',
                           textAlign: 'left'
                         }}
                       >
@@ -147,11 +139,11 @@ function MessagesPage() {
                       placeholder="Reply..."
                       value={replyText}
                       onChange={e => setReplyText(e.target.value)}
-                      onKeyPress={e => e.key === 'Enter' && handleAdminReply()}
+                      onKeyPress={e => e.key === 'Enter' && handleUserReply()}
                     />
                   </div>
                   <div className="control">
-                    <button className="button is-dark" onClick={handleAdminReply}>Send</button>
+                    <button className="button is-dark" onClick={handleUserReply}>Send</button>
                   </div>
                 </div>
               </>
@@ -167,4 +159,4 @@ function MessagesPage() {
   );
 }
 
-export default MessagesPage;
+export default MyMessagesPage;

@@ -95,6 +95,8 @@ messages = sqlalchemy.Table(
     Column("content", Text, nullable=False),
     Column("created_at", String(20)),
     Column("is_read", Integer, default=0),
+    Column("parent_id", Integer, nullable=True),
+    Column("root_id", Integer, nullable=True),
 )
 
 engine = create_engine(
@@ -159,6 +161,12 @@ def fix_missing_columns():
                 
             if not column_exists("messages", "is_read"):
                 conn.execute(text("ALTER TABLE messages ADD COLUMN is_read INTEGER DEFAULT 0"))
+                
+            if not column_exists("messages", "parent_id"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN parent_id INTEGER"))
+                
+            if not column_exists("messages", "root_id"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN root_id INTEGER"))
             
             conn.commit()
             print("All missing columns added successfully!")

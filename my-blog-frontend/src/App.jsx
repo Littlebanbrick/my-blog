@@ -19,6 +19,7 @@ import ProjectEditor from './components/ProjectEditor'
 import AboutPage from './components/AboutPage'
 import ContactPage from './components/ContactPage'
 import MessagesPage from './components/MessagePage'
+import MyMessagesPage from './components/MyMessagePage'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -47,6 +48,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/admin/messages" element={<MessagesPage />} />
+        <Route path="/my-messages" element={<MyMessagesPage />} />
       </Routes>
       <Footer />
     </BrowserRouter>

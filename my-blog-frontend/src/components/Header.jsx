@@ -6,6 +6,7 @@ function Header() {
   const [isActive, setIsActive] = useState(false)
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
+  const [unread, setUnread] = useState(0)
 
   useEffect(() => {
     // 之前的做法：从 localStorage 获取 token —— 改为请求后端获取当前用户
@@ -22,6 +23,38 @@ function Header() {
       .catch(() => setUser(null));
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUnread(0);
+      return;
+    }
+
+    const fetchUnread = () => {
+      if (user.role === 'admin') {
+        authFetch('/api/admin/messages/unread-count')
+          .then(res => res.json())
+          .then(data => {
+            if (data.code === 200) setUnread(data.data.unread);
+          });
+      } else {
+        authFetch('/api/messages/unread-count')
+          .then(res => res.json())
+          .then(data => {
+            if (data.code === 200) setUnread(data.data.unread);
+          });
+      }
+    };
+
+    fetchUnread();
+    window.refreshUnread = fetchUnread;        // 挂载到全局
+
+    const interval = setInterval(fetchUnread, 30000);
+    return () => {
+      clearInterval(interval);
+      delete window.refreshUnread;              // 清除，避免内存泄漏
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     // 调用后端 /api/logout 清除 cookie
@@ -84,30 +117,6 @@ function Header() {
           </div>
 
           <div className="navbar-end">
-            {user ? (
-              <div className="navbar-item">
-                <div className="buttons">
-                  {user.role === 'user' ? (
-                    <Link
-                      to="/contact"
-                      className="button is-light is-small"
-                      style={{ backgroundColor: '#8B0000', color: 'white' }}
-                    >
-                      Contact
-                    </Link>
-                  ) : (
-                  <Link
-                    to="/admin/messages"
-                    className="button is-light is-small"
-                    style={{ backgroundColor: '#8B0000', color: 'white' }}
-                  >
-                      View Messages
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ) : null}
-
             {!user ? (
               <div className="navbar-item">
                 <div className="buttons">
@@ -118,16 +127,39 @@ function Header() {
             ) : (
               <div className="navbar-item">
                 <div className="buttons">
+                  {user.role === 'user' ? (
+                    <>
+                      <Link to="/contact" className="button is-small is-light">Contact</Link>
+                      <Link
+                        to="/my-messages"
+                        className={`button is-small is-dark ${unread > 0 ? 'pulse-animation' : ''}`}
+                        style={{ position: 'relative' }}
+                      >
+                        My Messages
+                        {unread > 0 && <span className="badge">{unread}</span>}
+                      </Link>
+                    </>
+                  ) : (
+                    <Link
+                      to="/admin/messages"
+                      className={`button is-small is-light ${unread > 0 ? 'pulse-animation' : ''}`}
+                    >
+                      View Messages
+                      {unread > 0 && <span className="badge">{unread}</span>}
+                    </Link>
+                  )}
+
                   {user.role === 'admin' && (
                     <Link to="/create-post" className="button is-dark is-small">Create Post</Link>
                   )}
+
                   <Link to="/profile" className="button is-light is-small">{user.username}</Link>
                   <button className="button is-dark is-small" onClick={handleLogout}>Logout</button>
                 </div>
               </div>
             )}
+          </div>
         </div>
-      </div>
       </div>
     </nav>
   );

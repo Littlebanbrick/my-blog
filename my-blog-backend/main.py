@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from database import database, posts, comments, likes, users, projects_table, post_images, messages
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
-from sqlalchemy import func, select, and_, desc
+from sqlalchemy import func, select, and_, desc, or_
 from pydantic import BaseModel, EmailStr
 import os
 import shutil
@@ -18,6 +18,7 @@ import uuid
 import time
 from dotenv import load_dotenv
 import secrets
+import re
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -110,6 +111,9 @@ class NoteUpdate(BaseModel):
 class MessageCreate(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
     anonymous: bool = Body(False)
+    
+class MessageReply(BaseModel):
+    content: str = Body(..., min_length=1, max_length=1000)
     
 def beijing_now():
     return datetime.now(timezone(timedelta(hours=8)))
@@ -244,6 +248,9 @@ def send_verify_email(to_email: str, token: str):
         
 def allowed_file(filename):
     return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
+
+def is_strong_password(password: str) -> bool:
+    return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:\\|,.<>/?]).{8,}$', password))
 
 async def verify_csrf(request: Request):
     if request.method == "OPTIONS":
@@ -501,10 +508,6 @@ async def admin_delete_post(
 
     return success(data={"deleted_post_id": post_id})
 
-import re
-def is_strong_password(password: str) -> bool:
-    return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:\\|,.<>/?]).{8,}$', password))
-
 @app.post("/api/register")
 async def register(user: UserRegister):
     try:
@@ -512,6 +515,9 @@ async def register(user: UserRegister):
         user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
         
         username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
+        if user.username.lower().strip() == 'anonymous':
+            return {"code": 400, "msg": "Username cannot be 'Anonymous'"}
+        
         if username_exists:
             return {"code": 400, "msg": "Username already exists"}
 
@@ -725,7 +731,7 @@ async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
     })
     
 @app.delete("/api/user/delete")
-async def delete_user(current_user: TokenData = Depends(get_current_user)):
+async def delete_user(current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
     if current_user.role == "admin":
         return fail(msg="Admin cannot be deleted", code=403)
 
@@ -1064,29 +1070,240 @@ async def send_message(
     await database.execute(query)
     return success(msg="Message sent")
 
+# For the admin. All msgs.
 @app.get("/api/admin/messages")
-async def get_messages(
+async def get_admin_messages(current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    # Get all root msgs
+    roots = await database.fetch_all(
+        messages.select().where(messages.c.parent_id == None).order_by(messages.c.created_at.desc())
+    )
+    result = []
+    for root in roots:
+        root = dict(root)
+        # Calculate the number of the unread msgs
+        unread_replies = await database.fetch_val(
+            select(func.count()).select_from(messages).where(
+                and_(
+                    messages.c.root_id == root["id"],
+                    messages.c.is_read == 0,
+                    messages.c.sender_username != current_user.username
+                )
+            )
+        )
+        root["unread_replies"] = unread_replies
+        result.append(root)
+    return success(data=result)
+
+@app.put("/api/admin/messages/{message_id}/read")
+async def admin_mark_read(message_id: int, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    async with database.transaction():
+        await database.execute(
+            messages.update().where(
+                and_(messages.c.id == message_id, messages.c.is_read == 0)
+            ).values(is_read=1)
+        )
+        await database.execute(
+            messages.update().where(
+                and_(
+                    messages.c.root_id == message_id,
+                    messages.c.is_read == 0,
+                    messages.c.sender_username != current_user.username
+                )
+            ).values(is_read=1)
+        )
+    return success(msg="Marked as read")
+
+@app.put("/api/messages/{message_id}/read")
+async def user_mark_read(message_id: int, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
+    root = await database.fetch_one(messages.select().where(messages.c.id == message_id))
+    if not root:
+        return fail(msg="Message not found", code=404)
+    if current_user.username != root["sender_username"]:
+        raise HTTPException(status_code=403, detail="Not your message")
+    async with database.transaction():
+        await database.execute(
+            messages.update().where(
+                and_(messages.c.id == message_id, messages.c.is_read == 0)
+            ).values(is_read=1)
+        )
+        await database.execute(
+            messages.update().where(
+                and_(
+                    messages.c.root_id == message_id,
+                    messages.c.is_read == 0,
+                    messages.c.sender_username != current_user.username
+                )
+            ).values(is_read=1)
+        )
+    return success(msg="Marked as read")
+    
+@app.get("/api/admin/messages/unread-count")
+async def unread_count(current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    count = await database.fetch_val(
+        select(func.count()).select_from(messages).where(messages.c.is_read == 0)
+    )
+    return success(data={"unread": count})
+
+@app.get("/api/messages/unread-count")
+async def user_unread_count(current_user: TokenData = Depends(get_current_user)):
+    # 获取该用户发起的根消息ID列表
+    root_rows = await database.fetch_all(
+        select(messages.c.id).where(
+            and_(
+                messages.c.parent_id == None,
+                messages.c.sender_username == current_user.username
+            )
+        )
+    )
+    root_ids = [r.id for r in root_rows]
+    if not root_ids:
+        return success(data={"unread": 0})
+
+    count = await database.fetch_val(
+        select(func.count()).select_from(messages).where(
+            and_(
+                messages.c.root_id.in_(root_ids),
+                messages.c.is_read == 0,
+                messages.c.sender_username != current_user.username
+            )
+        )
+    )
+    return success(data={"unread": count or 0})
+
+# For the admin
+@app.post("/api/admin/messages/{message_id}/reply")
+async def reply_message(
+    message_id: int,
+    req: MessageReply,
     current_user: TokenData = Depends(get_current_user),
     _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    query = messages.select().order_by(messages.c.created_at.desc())
+    # Find the original msg
+    original = await database.fetch_one(messages.select().where(messages.c.id == message_id))
+    if not original:
+        return fail(msg="Message not found", code=404)
+
+    now = get_current_time()
+    root_id = original["root_id"] or message_id  # If the original msg has no root, then itself is the root
+    query = messages.insert().values(
+        sender_username=current_user.username,   # Reply from the admin
+        content=req.content,
+        created_at=now,
+        is_read=0,
+        parent_id=message_id,
+        root_id=root_id
+    )
+    await database.execute(query)
+    
+    if not original["is_read"]:
+        await database.execute(
+            messages.update().where(messages.c.id == message_id).values(is_read=1)
+        )
+    return success(msg="Reply sent")
+
+# For the users
+@app.post("/api/messages/{message_id}/reply")
+async def user_reply(
+    message_id: int,
+    req: MessageReply,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
+    if current_user.role == "admin":
+        raise HTTPException(status_code=400, detail="Admin should use /api/admin/...")
+    original = await database.fetch_one(messages.select().where(messages.c.id == message_id))
+    if not original:
+        return fail(msg="Message not found", code=404)
+    root_id = original["root_id"] or original["id"]
+    root = await database.fetch_one(messages.select().where(messages.c.id == root_id))
+    if not root or current_user.username != root["sender_username"]:
+        raise HTTPException(status_code=403, detail="You can only reply to your own conversations")
+    
+    now = get_current_time()
+    query = messages.insert().values(
+        sender_username=current_user.username,
+        content=req.content,
+        created_at=now,
+        is_read=0,
+        parent_id=message_id,
+        root_id=root_id
+    )
+    await database.execute(query)
+    return success(msg="Reply sent")
+
+@app.get("/api/admin/messages/{root_id}/conversation")
+async def get_conversation(
+    root_id: int,
+    current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    query = messages.select().where(
+        or_(messages.c.id == root_id, messages.c.root_id == root_id)
+    ).order_by(messages.c.created_at.asc())
     rows = await database.fetch_all(query)
     return success(data=[dict(row) for row in rows])
 
-@app.put("/api/admin/messages/{message_id}/read")
-async def mark_read(message_id: int,
+# For the users. Relevant msgs only.
+@app.get("/api/messages/my")
+async def my_messages(current_user: TokenData = Depends(get_current_user)):
+    query = messages.select().where(
+        and_(
+            messages.c.parent_id == None,
+            messages.c.sender_username == current_user.username
+        )
+    ).order_by(messages.c.created_at.desc())
+    roots = await database.fetch_all(query)
+    result = []
+    for row in roots:
+        root = dict(row)
+        unread = await database.fetch_val(
+            select(func.count()).select_from(messages).where(
+                and_(messages.c.root_id == root["id"],
+                    messages.c.is_read == 0,
+                    messages.c.sender_username != current_user.username
+                )
+            )
+        )
+        root["unread_replies"] = unread
+        result.append(root)
+    return success(data=result)
+    
+@app.get("/api/messages/{root_id}/conversation")
+async def get_conversation(
+    root_id: int,
     current_user: TokenData = Depends(get_current_user),
-    _=Depends(verify_csrf)
 ):
+    root = await database.fetch_one(messages.select().where(messages.c.id == root_id))
+    if not root:
+        return fail(msg="Conversation not found", code=404)
+    # 权限检查：管理员可看所有，用户只能看自己参与的
+    if current_user.role != "admin" and current_user.username != root["sender_username"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    query = messages.select().where(
+        or_(messages.c.id == root_id, messages.c.root_id == root_id)
+    ).order_by(messages.c.created_at.asc())
+    rows = await database.fetch_all(query)
+    return success(data=[dict(row) for row in rows])
+
+@app.delete("/api/admin/messages/{message_id}")
+async def delete_message(message_id: int, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    await database.execute(
-        messages.update().where(messages.c.id == message_id).values(is_read=1)
-    )
-    return success(msg="Marked as read")
-    
+    # 删除该根消息及其所有回复
+    async with database.transaction():
+        await database.execute(messages.delete().where(messages.c.root_id == message_id))
+        await database.execute(messages.delete().where(messages.c.id == message_id))
+    return success(msg="Message deleted")
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse(

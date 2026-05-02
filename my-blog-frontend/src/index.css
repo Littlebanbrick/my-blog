@@ -73,3 +73,27 @@ a:hover {
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
 }
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.pulse-animation {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: white;
+  color: #e0245e;
+  border-radius: 50%;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  min-width: 16px;
+  text-align: center;
+}

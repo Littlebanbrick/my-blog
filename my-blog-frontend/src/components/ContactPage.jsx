@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authFetch, getCurrentUser } from '../utils';
 
 function ContactPage() {
@@ -22,6 +22,12 @@ function ContactPage() {
 
   const handleSend = async () => {
     if (!content.trim()) return;
+
+    if (anonymous) {
+      const ok = window.confirm('You are sending anonymously. \nYou will NOT be able to see this message and its replies. Continue?');
+      if (!ok) return;
+    }
+
     await authFetch('/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -31,14 +37,19 @@ function ContactPage() {
     setSent(true);
   };
 
-  if (sent) return (
-    <section className="section has-navbar-fixed-top">
-      <div className="container">
-        <h2 className="title is-4">Message sent! Thank you.</h2>
-        <button className="button is-light" onClick={() => navigate('/')}>Back to Home</button>
-      </div>
-    </section>
-  );
+  if (sent) {
+    return (
+      <section className="section has-navbar-fixed-top">
+        <div className="container has-text-centered">
+          <h2 className="title is-4">Message sent!</h2>
+          <div className="buttons is-centered mt-4">
+            <Link to="/" className="button is-light">Home</Link>
+            <Link to="/my-messages" className="button is-dark">View My Messages</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (!isLoggedIn) return null;
 
