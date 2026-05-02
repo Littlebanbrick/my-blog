@@ -8,7 +8,7 @@ COPY my-blog-frontend/package.json my-blog-frontend/package-lock.json ./
 RUN npm ci
 
 # 安装构建工具（防止 rolldown 原生模块报错）
-RUN apt-get update && apt-get install -y python3 make g++ pkg-config libc6-dev
+# RUN apt-get update && apt-get install -y python3 make g++ pkg-config libc6-dev
 
 # 复制所有前端源码
 COPY my-blog-frontend/ .
