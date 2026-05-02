@@ -40,7 +40,18 @@ function NotePage() {
             </div>
           )}
         </div>
-        <div className="content markdown-body" style={{ maxWidth: '80%', backgroundColor: '#fff', padding: '2rem', borderRadius: '6px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <div 
+          className="content markdown-body"
+          style={{
+            maxWidth: '720px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            backgroundColor: '#ffffff',
+            padding: '2rem 2.5rem',
+            borderRadius: '6px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          }}
+        >          
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
