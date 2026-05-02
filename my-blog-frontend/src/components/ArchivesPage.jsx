@@ -53,14 +53,14 @@ function ArchivesPage() {
           </div>
         </div>
 
-        <div className="columns is-multiline">
+        <div className="archives-columns">
           {sorted.map(post => {
             const validImages = (post.images || []).filter(url => url && url.trim() !== '');
             return (
               <Link
                 key={post.id}
                 to={`/post/${post.id}`}
-                className="column is-6-tablet is-4-desktop"
+                className="card-item"
                 style={{ color: 'inherit', textDecoration: 'none' }}
                 onContextMenu={(e) => handlePostRightClick(e, post.id)}
               >
