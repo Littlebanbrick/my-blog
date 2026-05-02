@@ -1,7 +1,5 @@
 '''
 main.py
-
-To run this application, enter `uvicorn main:app --reload --port 8000` in the terminal.
 '''
 
 from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Response, UploadFile, File
@@ -703,12 +701,12 @@ async def check_verify(username: str):
 
 @app.get("/wait-verification")
 async def wait_verification():
-    return RedirectResponse("http://localhost/wait-verification")
+    return RedirectResponse("/wait-verification")
 
 @app.get("/verify-email")
 async def verify_email_page(request: Request):
     token = request.query_params.get("token", "")
-    return RedirectResponse(f"http://localhost/verify-email?token={token}")
+    return RedirectResponse(f"/verify-email?token={token}")
 
 @app.get("/api/user/profile")
 async def get_user_profile(current_user: TokenData = Depends(get_current_user)):

@@ -5,7 +5,7 @@ import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, Text, text
 
 # Database connection URL（SQLite stored at root dir）
-DATABASE_URL = "sqlite:///./blog.db"
+DATABASE_URL = "sqlite:///./data/blog.db"
 
 # Database asynchronous connection instance
 database = databases.Database(DATABASE_URL)
