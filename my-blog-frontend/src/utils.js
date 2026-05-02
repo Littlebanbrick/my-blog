@@ -82,11 +82,12 @@ export async function getCurrentUser() {
 }
 
 export function getImageUrl(url) {
-  const STATIC_BASE = 'http://localhost:8000';
-  if (url && url.startsWith('/')) {
-    return STATIC_BASE + url;
+  // 如果已经是完整的在线地址（http/https开头），直接返回
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return url;
   }
-  return url;
+  // 否则，使用当前页面的协议 + 域名 + 端口拼接相对路径
+  return `${window.location.origin}${url}`;
 }
 
 function getCookie(name) {

@@ -42,13 +42,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost", "http://localhost:80"],
+    allow_origins=["http://littlebanbrick.cn", "https://littlebanbrick.cn", "http://www.littlebanbrick.cn", "https://www.littlebanbrick.cn"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 load_dotenv()
+
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -205,7 +207,7 @@ def send_verify_email(to_email: str, token: str):
             print("WARNING: Email credentials not set. Skipping email sending.")
             return
 
-        verify_url = f"http://localhost/verify-email?token={token}"
+        verify_url = f"{FRONTEND_BASE_URL}/verify-email?token={token}"
 
         yag = yagmail.SMTP(
             user=sender_email,
@@ -483,14 +485,8 @@ async def admin_delete_post(
 
     for img in image_records:
         url = img["url"]
-        if url.startswith("http://localhost:8000"):
-            relative = url.replace("http://localhost:8000", "").lstrip("/")
-        elif url.startswith("/"):
-            relative = url.lstrip("/")
-        else:
-            relative = url
-
-        file_path = os.path.abspath(relative)
+        relative = url.lstrip("/")
+        file_path = os.path.join("/app", relative)
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
