@@ -1,0 +1,24 @@
+name: Deploy to Cloud Server
+
+on:
+  push:
+    branches: [ main ]   # 当 main 分支有推送时触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/blog/my-blog
+            git pull origin main
+            docker compose down
+            docker compose up -d --build

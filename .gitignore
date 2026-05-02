@@ -31,3 +31,6 @@ notes/
 static/
 
 node_modules/
+
+github-actions-key
+github-actions-key.pub
