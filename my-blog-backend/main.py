@@ -701,12 +701,12 @@ async def check_verify(username: str):
 
 @app.get("/wait-verification")
 async def wait_verification():
-    return RedirectResponse("/wait-verification")
+    return RedirectResponse(f"{FRONTEND_BASE_URL}/wait-verification")
 
 @app.get("/verify-email")
 async def verify_email_page(request: Request):
     token = request.query_params.get("token", "")
-    return RedirectResponse(f"/verify-email?token={token}")
+    return RedirectResponse(f"{FRONTEND_BASE_URL}/verify-email?token={token}")
 
 @app.get("/api/user/profile")
 async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
