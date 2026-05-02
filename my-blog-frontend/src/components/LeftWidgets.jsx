@@ -56,24 +56,6 @@ function ProfileCard() {
           </h3>
           <ul className="menu-list">
             <li>
-              <a href="https://zh-hans.react.dev/" target="_blank" rel="noopener" className="level is-mobile">
-                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'break-word' }}>
-                  React Docs
-                </span>
-                <span className="level-right">
-                  <span className="level-item tag"
-                    style={{
-                      width: '100px',
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >zh-hans.react.dev</span>
-                </span>
-              </a>
-            </li>
-            <li>
               <a href="https://en.wikipedia.org/wiki/Main_Page/" target="_blank" rel="noopener" className="level is-mobile">
                 <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'break-word' }}>
                   Wikipedia
@@ -88,6 +70,24 @@ function ProfileCard() {
                       textOverflow: 'ellipsis'
                     }}
                   >en.wikipedia.org</span>
+                </span>
+              </a>
+            </li>
+            <li>
+              <a href="http://cspo.zju.edu.cn/" target="_blank" rel="noopener" className="level is-mobile">
+                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'break-word' }}>
+                  ZJU CCST
+                </span>
+                <span className="level-right">
+                  <span className="level-item tag"
+                    style={{
+                      width: '100px',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}
+                  >cspo.zju.edu.cn</span>
                 </span>
               </a>
             </li>

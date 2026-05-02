@@ -43,7 +43,7 @@ function NotePage() {
         <div 
           className="content markdown-body"
           style={{
-            maxWidth: '720px',
+            maxWidth: '85%',
             marginLeft: 'auto',
             marginRight: 'auto',
             backgroundColor: '#ffffff',
