@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { authFetch, getCurrentUser } from '../utils';
-import APlayer from 'aplayer';
-import 'aplayer/dist/APlayer.min.css';
 
 function SongCard() {
   const [songId, setSongId] = useState('');
@@ -10,60 +8,62 @@ function SongCard() {
   const playerContainer = useRef(null);
   const apRef = useRef(null);
 
-  // 获取当前歌曲 ID 和管理员状态
   useEffect(() => {
-    authFetch('/api/song')
-      .then(res => res.json())
-      .then(data => {
-        if (data.data?.song_id) setSongId(data.data.song_id);
-      });
+    authFetch('/api/song').then(res => res.json()).then(data => {
+      if (data.data?.song_id) setSongId(data.data.song_id);
+    });
     getCurrentUser().then(user => {
       if (user.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
-  // 当 songId 变化时，加载歌曲细节并初始化播放器
   useEffect(() => {
     if (!songId || !playerContainer.current) return;
 
-    // 清理旧的播放器
+    // 销毁旧播放器
     if (apRef.current) {
       apRef.current.destroy();
       apRef.current = null;
     }
 
-    let cancelled = false;
+    const APlayer = window.APlayer;
+    const Meting = window.Meting;
+    if (!APlayer || !Meting) return;
 
-    authFetch(`/api/song/detail?mid=${songId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (cancelled || data.code !== 200 || !data.data) return;
+    // 创建新播放器
+    apRef.current = new APlayer({
+      container: playerContainer.current,
+      fixed: false,
+      autoplay: false,
+      theme: '#1a365d',
+      loop: 'all',
+      order: 'list',
+      preload: 'auto',
+      volume: 0.7,
+      audio: []   // 音频列表留空，由 Meting 填充
+    });
 
-        const song = data.data;
-        apRef.current = new APlayer({
-          container: playerContainer.current,
-          fixed: false,
-          autoplay: false,
-          theme: '#1a365d',
-          loop: 'all',
-          order: 'list',
-          preload: 'auto',
-          volume: 0.7,
-          audio: [{
-            name: song.title || 'Unknown',
-            artist: song.artist || 'Unknown',
-            url: song.url,
-            cover: song.cover || '',
-            lrc: song.lrc || ''
-          }]
-        });
-      })
-      .catch(console.error);
+    // 使用 Meting 从 QQ 音乐获取歌曲信息
+    try {
+      new Meting({
+        server: 'tencent',
+        type: 'song',
+        mid: songId,
+        audio: apRef.current
+      });
+    } catch (e) {
+      console.error('Meting init error:', e);
+    }
 
-    return () => { cancelled = true; };
+    // 清理函数
+    return () => {
+      if (apRef.current) {
+        apRef.current.destroy();
+        apRef.current = null;
+      }
+    };
   }, [songId]);
 
-  // 没有歌曲时不显示
   if (!songId) return null;
 
   return (
