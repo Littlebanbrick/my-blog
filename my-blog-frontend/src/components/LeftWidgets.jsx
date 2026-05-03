@@ -192,12 +192,23 @@ function ProfileCard() {
       </div>
 
       {/* CLI ChatBot Entry */}
-      <Link to="/cli" style={{ color: 'inherit', textDecoration: 'none' }}>
-        <div className="card widget" style={{ backgroundColor: '#1a1a1a', color: '#0f0', borderRadius: '8px', cursor: 'pointer' }}>
-          <div className="card-content" style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'bold' }}>
-              <i className="fas fa-terminal mr-1"></i> CLI ChatBot
-            </span>
+      <Link
+        to="/cli"
+        style={{ color: 'inherit', textDecoration: 'none', marginTop: '2rem', marginBottom: '2rem', display: 'block' }}
+      >
+        <div
+          className="card widget"
+          style={{
+            backgroundColor: '#1a1a1a',
+            color: '#fff',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            padding: '0.8rem 1rem',
+            fontFamily: "'Cascadia Code', monospace",
+          }}
+        >
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem' }}>
+            <i className="fas fa-terminal mr-1"></i> CLI ChatBot
           </div>
         </div>
       </Link>

@@ -74,21 +74,35 @@ function CliChatBot() {
     <section className="section has-navbar-fixed-top" style={{ backgroundColor: '#000', minHeight: '100vh' }}>
       <div className="container" style={{ maxWidth: '800px' }}>
         <div className="terminal-window" style={{ backgroundColor: '#111', borderRadius: '8px', padding: '0', overflow: 'hidden', boxShadow: '0 0 20px rgba(0,255,0,0.1)' }}>
-          {/* 标题栏 */}
-          <div style={{ backgroundColor: '#333', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center' }}>
-            <span style={{ color: '#ccc', fontSize: '0.9rem', fontFamily: 'monospace' }}>CLI ChatBot</span>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
-              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
-              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
-            </div>
-          </div>
+        {/* 标题栏 - Windows PowerShell 风格 */}
+        <div style={{
+            backgroundColor: '#012456',    // Windows 深蓝
+            padding: '0.4rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: "'Cascadia Code', monospace"
+            }}>
+        <span style={{ color: '#fff', fontSize: '0.9rem' }}>Windows PowerShell</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.8rem' }}>
+            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>─</span>
+            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>□</span>
+            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>✕</span>
+        </div>
+        </div>
           {/* 终端内容区 */}
-          <div
+            <div
             ref={terminalRef}
-            style={{ padding: '1rem', height: 'calc(100vh - 12rem)', overflowY: 'auto', fontFamily: 'monospace', color: '#0f0', fontSize: '0.95rem', lineHeight: '1.6' }}
+            style={{
+                padding: '1rem',
+                height: 'calc(100vh - 12rem)',
+                overflowY: 'auto',
+                fontFamily: "'Cascadia Code', 'Fira Code', monospace",
+                color: '#0f0',
+                fontSize: '0.95rem',
+                lineHeight: '1.6'
+            }}
             onClick={() => inputRef.current?.focus()}
-          >
+            >
             {history.map((item, index) => (
               <div key={index} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: item.type === 'input' ? '#0f0' : '#aaa' }}>
                 {item.text}
