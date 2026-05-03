@@ -1,5 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 
+const WHATIS_MAP = {
+  'this site': `This site is my personal blog, built from scratch with React, FastAPI, and SQLite. \n
+It's a space where I share learning notes, project showcases, photography, and more.\n
+You can find posts, archives, and a CLI chatbot like this one.`,
+
+  leximind: `LexiMind is an AI-powered TOEFL English learning web app I created during Apr. 2026.\n
+It uses a strict command-based prompt format to minimize token usage and deliver consistent LLM responses.\n
+You can check it out at: https://github.com/Littlebanbrick/LexiMind`,
+};
+
 const COMMANDS = {
   help: {
     handler: () =>
@@ -19,7 +29,21 @@ const COMMANDS = {
 `Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light.\n` +
 `I love the scenery there in my hometown, Shenzhen (in Guangdong Province, China), which is a beautiful city with kind people around me.\n` +
 `I also spend time playing games like Minecraft and KARDS, which are two of my few favorite games.\n\n` +
-`I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.`
+`I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.\n` +
+`Thanks to the rapid development of vibe-coding, I can finish all content of this blog site in 2 weeks.`
+  },
+  whatis: {
+    description: 'Get info about a specific topic. Usage: whatis <topic>',
+    handler: (args) => {
+      const topic = args.trim().toLowerCase();
+      if (topic === '') {
+        return `whatis what?\nMaybe you can try the following:\n - this site\n - leximind`;
+      }
+      if (WHATIS_MAP[topic]) {
+        return WHATIS_MAP[topic];
+      }
+      return `No info found for "${topic}".`;
+    }
   },
   clear: {
     handler: () => null   // 特殊标记，清屏

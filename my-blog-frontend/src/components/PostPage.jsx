@@ -143,7 +143,7 @@ function PostPage() {
 
           <div
             className="content"
-            style={{ lineHeight: 2 }}
+            style={{ lineHeight: 2, fontSize: '1.1rem' }}
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize((post.preview || "").replace(/\n/g, '<br>'))
             }}

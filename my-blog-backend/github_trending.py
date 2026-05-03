@@ -32,7 +32,6 @@ def fetch_github_trending():
         return []
 
 def generate_trending_summary(repos):
-    """用英文生成简短有趣的趋势总结"""
     if not repos:
         return "No notable repositories in the last 24 hours."
 
@@ -51,8 +50,18 @@ def generate_trending_summary(repos):
             f"  {desc}\n  Topics: {topics_str}"
         )
 
-    prompt = f"""Here are the top new GitHub repositories from the past 24 hours.
-Write a 200-450 word engaging English summary explaining what each project does and why it matters, and end with a brief recommendation for developers.
+    prompt = f"""You are given the top 3 new GitHub repos created in the last 24 hours.
+Write a concise, engaging summary (around 300-400 words) in English.
+
+Structure your response as follows:
+1. Start with a one-sentence intro
+2. Then for **each** of the 3 repositories, provide:
+   - A sub-heading with the repo name
+   - A 2-3 sentence description: what it does, why it's interesting, key features
+3. End with a short recommendation or closing remark.
+
+Make sure to cover ALL THREE repositories.
+
 No emojis.
 
 Repositories:
@@ -69,7 +78,7 @@ Repositories:
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 600
+        "max_tokens": 900            # 增加 token 上限
     }
 
     try:
