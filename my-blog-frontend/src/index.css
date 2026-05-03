@@ -114,3 +114,10 @@ a:hover {
     column-count: 1;
   }
 }
+
+.cli-terminal-container::-webkit-scrollbar {
+  display: none;
+}
+.cli-terminal-container {
+  scrollbar-width: none; /* Firefox */
+}
