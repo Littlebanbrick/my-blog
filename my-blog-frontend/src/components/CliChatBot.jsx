@@ -12,10 +12,16 @@ const COMMANDS = {
   whoami: {
     description: 'Who is the blog owner',
     handler: () =>
-      `Name: Johnny Wang\n` +
-      `Motto: Be unique, be yourself, be a monster!\n` +
-      `Location: Hangzhou, China\n` +
-      `GitHub: https://github.com/Littlebanbrick`
+`Hi! It's Johnny here.\n` + 
+`Keywords: Zhejiang Univ, Python, Computer Science, freshman, Photography, Minecraft, KARDS\n\n` +
+`About Me\n` +
+`I'm a freshman majoring in Computer Science at Zhejiang University. I started learning programming once I attended college and gradually developed a strong interest in building things with Python and exploring how software works under the hood.\n` +
+`I enjoy creating small but practical projects, experimenting with new ideas, and improving my problem-solving skills through hands-on development. Recently, I've been exploring broader areas in computer science and llms while building a solid technical foundation.\n` +
+`Hobbies\n` +
+`Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light.\n` +
+`I love the scenery there in my hometown, Shenzhen (in Guangdong Province, China), which is a beautiful city with kind people around me.\n` +
+`I also spend time playing games like Minecraft and KARDS, which are two of my few favorite games.\n` +
+`I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.`
   },
   clear: {
     description: 'Clear the terminal',
@@ -26,7 +32,7 @@ const COMMANDS = {
 function CliChatBot() {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState([
-    { type: 'output', text: 'Welcome to Littlebanbrick CLI ChatBot.' },
+    { type: 'output', text: 'Welcome to my CLI ChatBot.' },
     { type: 'output', text: 'Type "help" for available commands.' }
   ]);
   const inputRef = useRef(null);
@@ -74,21 +80,15 @@ function CliChatBot() {
     <section className="section has-navbar-fixed-top" style={{ backgroundColor: '#000', minHeight: '100vh' }}>
       <div className="container" style={{ maxWidth: '800px' }}>
         <div className="terminal-window" style={{ backgroundColor: '#111', borderRadius: '8px', padding: '0', overflow: 'hidden', boxShadow: '0 0 20px rgba(0,255,0,0.1)' }}>
-        {/* 标题栏 - Windows PowerShell 风格 */}
-        <div style={{
-            backgroundColor: '#012456',    // Windows 深蓝
-            padding: '0.4rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            fontFamily: "'Cascadia Code', monospace"
-            }}>
-        <span style={{ color: '#fff', fontSize: '0.9rem' }}>Windows PowerShell</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.8rem' }}>
-            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>─</span>
-            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>□</span>
-            <span style={{ color: '#ccc', fontSize: '0.75rem', lineHeight: 1, cursor: 'default', userSelect: 'none' }}>✕</span>
-        </div>
-        </div>
+        {/* 标题栏 */}
+          <div style={{ backgroundColor: '#333', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center' }}>
+            <span style={{ color: '#ccc', fontSize: '0.9rem', fontFamily: 'monospace' }}>CLI ChatBot</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
+            </div>
+          </div>
           {/* 终端内容区 */}
             <div
             ref={terminalRef}

@@ -194,7 +194,7 @@ function ProfileCard() {
       {/* CLI ChatBot Entry */}
       <Link
         to="/cli"
-        style={{ color: 'inherit', textDecoration: 'none', marginTop: '2rem', marginBottom: '2rem', display: 'block' }}
+        style={{ color: 'inherit', textDecoration: 'none', marginTop: '1rem', marginBottom: '1rem', display: 'block' }}
       >
         <div
           className="card widget"
