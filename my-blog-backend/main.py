@@ -1353,6 +1353,54 @@ async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_u
         return fail(msg="Could not extract song ID")
     return success(data={"song_id": songid})
 
+@app.get("/api/song/detail")
+async def song_detail(mid: str):
+    if not mid:
+        return fail("Missing song id")
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        # 使用相对稳定的接口获取歌曲信息
+        resp = requests.get(
+            f"https://api.qq.jsososo.com/api/song/url?id={mid}",
+            headers=headers,
+            timeout=10
+        )
+        if resp.status_code != 200 or resp.json().get("code") != 200:
+            return fail("Failed to fetch song url")
+
+        url_data = resp.json()["data"]
+        # 获取最高音质
+        audio_url = url_data.get("mp3_lq") or url_data.get("mp3_128k") or url_data.get("flac")
+        song_name = url_data.get("songname", "")
+        singer = url_data.get("singer_name", "")
+
+        # 获取歌词
+        lrc = ""
+        try:
+            lrc_resp = requests.get(
+                f"https://api.qq.jsososo.com/api/lyric?id={mid}",
+                headers=headers, timeout=5
+            )
+            if lrc_resp.status_code == 200 and lrc_resp.json().get("code") == 200:
+                lrc = lrc_resp.json()["data"]["lyric"]
+        except:
+            pass
+
+        # 封面图片
+        cover = f"https://y.qq.com/music/photo_new/T002R300x300M000{mid}.jpg"
+
+        return success(data={
+            "title": song_name,
+            "artist": singer,
+            "cover": cover,
+            "url": audio_url,
+            "lrc": lrc
+        })
+    except Exception as e:
+        return fail(f"Internal error: {e}")
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     return JSONResponse(

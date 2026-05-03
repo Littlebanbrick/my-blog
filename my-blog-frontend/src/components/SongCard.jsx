@@ -8,76 +8,86 @@ function SongCard() {
   const playerContainer = useRef(null);
   const apRef = useRef(null);
 
+  // 获取歌曲 ID 和管理员状态
   useEffect(() => {
-    authFetch('/api/song')
-      .then(res => res.json())
-      .then(data => {
-        console.log('[SongCard] song_id from API:', data.data?.song_id);
-        if (data.data?.song_id) setSongId(data.data.song_id);
-      });
+    authFetch('/api/song').then(res => res.json()).then(data => {
+      if (data.data?.song_id) setSongId(data.data.song_id);
+    });
     getCurrentUser().then(user => {
-      console.log('[SongCard] user role:', user.data?.role);
       if (user.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
+  // 当 songId 变化时初始化播放器
   useEffect(() => {
-    console.log('[SongCard] current songId:', songId);
-    if (!songId || !playerContainer.current) {
-      console.warn('[SongCard] missing songId or container ref');
-      return;
-    }
+    if (!songId || !playerContainer.current) return;
 
-    // 检查全局对象
-    console.log('[SongCard] window.APlayer:', window.APlayer);
-    console.log('[SongCard] window.Meting:', window.Meting);
-
-    if (!window.APlayer || !window.Meting) {
-      console.warn('[SongCard] APlayer or Meting not loaded yet, waiting...');
-      return;
-    }
-
-    // 销毁旧播放器
+    // 清理旧播放器
     if (apRef.current) {
-      console.log('[SongCard] destroying previous APlayer instance');
       apRef.current.destroy();
       apRef.current = null;
     }
 
-    const APlayer = window.APlayer;
-    const Meting = window.Meting;
+    // 动态加载 APlayer 的 CSS 和 JS
+    const loadAPlayer = () => {
+      return new Promise((resolve, reject) => {
+        if (window.APlayer) {
+          resolve();
+          return;
+        }
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/lib/APlayer.min.css';
+        document.head.appendChild(link);
 
-    console.log('[SongCard] creating APlayer instance...');
-    apRef.current = new APlayer({
-      container: playerContainer.current,
-      fixed: false,
-      autoplay: false,
-      theme: '#1a365d',
-      loop: 'all',
-      order: 'list',
-      preload: 'auto',
-      volume: 0.7,
-      audio: []  // Meting 会填充
-    });
-
-    console.log('[SongCard] APlayer instance created, opts:', apRef.current.opts);
-    console.log('[SongCard] container element:', playerContainer.current);
-    console.log('[SongCard] container current HTML:', playerContainer.current.innerHTML);
-
-    try {
-      new Meting({
-        server: 'tencent',
-        type: 'song',
-        mid: songId,
-        audio: apRef.current
+        const script = document.createElement('script');
+        script.src = '/lib/APlayer.min.js';
+        script.onload = () => {
+          if (window.APlayer) resolve();
+          else reject(new Error('APlayer not loaded'));
+        };
+        script.onerror = reject;
+        document.body.appendChild(script);
       });
-      console.log('[SongCard] Meting initialized');
-    } catch (e) {
-      console.error('[SongCard] Meting init error:', e);
-    }
+    };
+
+    const initPlayer = async () => {
+      try {
+        await loadAPlayer();
+        // 从后端获取歌曲详情
+        const res = await authFetch(`/api/song/detail?mid=${songId}`);
+        const data = await res.json();
+        if (data.code !== 200 || !data.data?.url) {
+          console.error('Invalid song detail:', data);
+          return;
+        }
+
+        const song = data.data;
+        apRef.current = new window.APlayer({
+          container: playerContainer.current,
+          fixed: false,
+          autoplay: false,
+          theme: '#1a365d',
+          loop: 'all',
+          order: 'list',
+          preload: 'auto',
+          volume: 0.7,
+          audio: [{
+            name: song.title || 'Unknown',
+            artist: song.artist || 'Unknown',
+            url: song.url,
+            cover: song.cover || '',
+            lrc: song.lrc || ''
+          }]
+        });
+      } catch (err) {
+        console.error('SongCard init failed:', err);
+      }
+    };
+
+    initPlayer();
 
     return () => {
-      console.log('[SongCard] cleanup');
       if (apRef.current) {
         apRef.current.destroy();
         apRef.current = null;
@@ -90,14 +100,7 @@ function SongCard() {
   return (
     <div className="card widget">
       <div className="card-content" style={{ padding: '0.5rem' }}>
-        <div
-          ref={playerContainer}
-          style={{
-            minHeight: '90px',
-            backgroundColor: '#f0f0f0',   // 临时背景，方便看容器是否存在
-            border: '1px dashed #ccc'
-          }}
-        />
+        <div ref={playerContainer} style={{ minHeight: '90px' }} />
       </div>
     </div>
   );
