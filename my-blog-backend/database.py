@@ -104,7 +104,11 @@ song_config = sqlalchemy.Table(
     "song_config",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("song_id", String(50)),
+    Column("title", String(100)),
+    Column("artist", String(100)),
+    Column("url", String(300)),
+    Column("cover", String(300)),
+    Column("lrc", Text),
 )
 
 engine = create_engine(
