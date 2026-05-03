@@ -180,7 +180,11 @@ function MomentList() {
                 </div>
 
                 <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
-                <div className="content"><p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p></div>
+                {item.title !== "🤖 GitHub Trending Today" && (
+                  <div className="content">
+                    <p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p>
+                  </div>
+                )}
 
                 {item.images && item.images.length > 0 && (
                   <div className="columns is-multiline is-mobile mt-2">

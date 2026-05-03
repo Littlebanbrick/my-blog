@@ -36,6 +36,8 @@ import bcrypt
 # Automatically eliminate unverified users
 import asyncio
 
+from github_trending import trending_scheduler
+
 app = FastAPI()
 
 app.add_middleware(
@@ -280,6 +282,8 @@ async def cleanup_unverified_users():
 async def startup():
     await database.connect()
     asyncio.create_task(cleanup_unverified_users())
+    asyncio.create_task(trending_scheduler())
+    await update_trending_post()
 
 @app.on_event("shutdown")
 async def shutdown():
