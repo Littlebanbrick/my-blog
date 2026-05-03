@@ -57,10 +57,16 @@ function CliChatBot() {
     const lower = trimmed.toLowerCase();
     if (COMMANDS[lower]) {
       const result = COMMANDS[lower].handler();
-      if (result === null) {
-        setHistory([]);
+        if (result === null) {
+        setHistory([
+            { type: 'output', text: 'Welcome to my CLI ChatBot.' },
+            { type: 'output', text: 'Type "help" for available commands.' }
+        ]);
+        setInput('');
+        setCommandHistory([]);
+        setHistoryIndex(-1);
         return;
-      }
+        }
       setHistory(prev => [...prev, { type: 'output', text: result }]);
     } else {
       setHistory(prev => [...prev, { type: 'output', text: `What do you mean? Ask "help" for help!` }]);
@@ -130,21 +136,20 @@ function CliChatBot() {
 
         {/* 输入行 */}
         <form className="cli-prompt" onSubmit={handleSubmit}>
-          <span className="cli-username">/littlebanbrick</span>
-          <span className="cli-separator">$</span>
-          <span className="cli-input-container">
+        <span className="cli-username">/littlebanbrick</span>
+        <span className="cli-separator">$</span>
+        <span className="cli-input-container">
             <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="cli-input"
-              autoFocus
-              spellCheck="false"
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="cli-input"
+            autoFocus
+            spellCheck="false"
             />
-            <span className="cli-cursor">|</span>
-          </span>
+        </span>
         </form>
       </div>
     </div>

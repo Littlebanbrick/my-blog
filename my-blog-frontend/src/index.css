@@ -240,14 +240,9 @@ a:hover {
   color: #0f0;
   font-family: inherit;
   font-size: 0.9rem;
-  flex: 1;
   caret-color: #0f0;
 }
-.cli-cursor {
-  color: #0f0;
-  font-weight: bold;
-  animation: blink 1s step-end infinite;
-}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
