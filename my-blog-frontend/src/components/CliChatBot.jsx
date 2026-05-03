@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 
 const WHATIS_MAP = {
-  'this site': `This site is my personal blog, built from scratch with React, FastAPI, and SQLite. \n
-It's a space where I share learning notes, project showcases, photography, and more.\n
-You can find posts, archives, and a CLI chatbot like this one.`,
+  'this site': `This site is my personal blog, built from scratch with React, FastAPI, and SQLite. \n` +
+`It's a space where I share learning notes, project showcases, photography, and more.\n` +
+`You can find posts, archives, and a CLI chatbot like this one.`,
 
-  leximind: `LexiMind is an AI-powered TOEFL English learning web app I created during Apr. 2026.\n
-It uses a strict command-based prompt format to minimize token usage and deliver consistent LLM responses.\n
-You can check it out at: https://github.com/Littlebanbrick/LexiMind`,
+  leximind: `LexiMind is an AI-powered TOEFL English learning web app I created during Apr. 2026.\n` +
+`It uses a strict command-based prompt format to minimize token usage and deliver consistent LLM responses.\n` +
+`You can check it out at: https://github.com/Littlebanbrick/LexiMind`,
 };
 
 const COMMANDS = {
@@ -16,7 +16,7 @@ const COMMANDS = {
       `Available commands:\n` +
       `  help     - Show this message\n` +
       `  whoami   - Display information about the blog owner\n` +
-      `  whatis   - Introduce something you would like to know` +
+      `  whatis   - Introduce something you would like to know\n` +
       `  clear    - Clear the terminal screen\n`
   },
   whoami: {
@@ -75,28 +75,38 @@ function CliChatBot() {
   const handleCommand = (cmd) => {
     const trimmed = cmd.trim();
     if (trimmed === '') return;
+
+    // 解析命令名和参数
+    const firstSpaceIndex = trimmed.indexOf(' ');
+    const commandName = (firstSpaceIndex === -1
+      ? trimmed
+      : trimmed.substring(0, firstSpaceIndex)
+    ).toLowerCase();
+    const argString = firstSpaceIndex === -1 ? '' : trimmed.substring(firstSpaceIndex + 1);
+
+    // 添加到历史（输入行）
     setCommandHistory(prev => [...prev, trimmed]);
     setHistoryIndex(-1);
     setHistory(prev => [...prev, { type: 'input', text: `Littlebanbrick $ ${trimmed}` }]);
 
-    const lower = trimmed.toLowerCase();
-    if (COMMANDS[lower]) {
-      const result = COMMANDS[lower].handler();
+    try {
+      if (COMMANDS[commandName]) {
+        const result = COMMANDS[commandName].handler(argString);
         if (result === null) {
-        setHistory([
-            { type: 'output', text: 'Welcome to my CLI ChatBot.' },
-            { type: 'output', text: 'Type "help" for available commands.' }
-        ]);
-        setInput('');
-        setCommandHistory([]);
-        setHistoryIndex(-1);
-        return;
+          // clear 命令
+          setHistory([]);
+          setInput('');
+          return;
         }
-      setHistory(prev => [...prev, { type: 'output', text: result }]);
-    } else {
-      setHistory(prev => [...prev, { type: 'output', text: `What do you mean? Ask "help" for help!` }]);
+        setHistory(prev => [...prev, { type: 'output', text: result }]);
+      } else {
+        setHistory(prev => [...prev, { type: 'output', text: `What do you mean? Ask "help" for help!` }]);
+      }
+    } catch (e) {
+      setHistory(prev => [...prev, { type: 'output', text: `Error: ${e.message}` }]);
+    } finally {
+      setInput('');   // 确保输入框清空
     }
-    setInput('');
   };
 
   const handleSubmit = (e) => {
