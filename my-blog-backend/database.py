@@ -99,6 +99,14 @@ messages = sqlalchemy.Table(
     Column("root_id", Integer, nullable=True),
 )
 
+# ========== Table of song configs  ==========
+song_config = sqlalchemy.Table(
+    "song_config",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("iframe_code", Text),
+)
+
 engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False}

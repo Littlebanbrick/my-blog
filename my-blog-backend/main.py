@@ -6,7 +6,7 @@ from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Resp
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
-from database import database, posts, comments, likes, users, projects_table, post_images, messages
+from database import database, posts, comments, likes, users, projects_table, post_images, messages,song_config
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy import func, select, and_, desc, or_
 from pydantic import BaseModel, EmailStr
@@ -1300,6 +1300,63 @@ async def delete_message(message_id: int, current_user: TokenData = Depends(get_
         await database.execute(messages.delete().where(messages.c.root_id == message_id))
         await database.execute(messages.delete().where(messages.c.id == message_id))
     return success(msg="Message deleted")
+
+# 获取当前歌曲（公开）
+@app.get("/api/song")
+async def get_song():
+    row = await database.fetch_one(song_config.select().where(song_config.c.id == 1))
+    if not row:
+        return success(data=None)
+    return success(data={"iframe_code": row["iframe_code"]})
+
+# 管理员设置歌曲（PUT，覆盖式）
+@app.put("/api/admin/song")
+async def set_song(req: dict, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    iframe_code = req.get("iframe_code", "")
+    # 删除旧记录并插入新记录（确保只有一条）
+    await database.execute(song_config.delete())
+    await database.execute(song_config.insert().values(id=1, iframe_code=iframe_code))
+    return success(msg="Song updated")
+
+# 管理员删除歌曲（可选，可以直接更新为空字符串）
+@app.delete("/api/admin/song")
+async def delete_song(current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    await database.execute(song_config.delete())
+    return success(msg="Song removed")
+
+@app.post("/api/admin/song/lookup")
+async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    link = req.get("link", "").strip()
+    if not link:
+        return fail(msg="Please provide a QQ Music song link")
+
+    # 尝试多种常见链接格式提取 songid
+    patterns = [
+        r'/songDetail/(\w+)',       # y.qq.com/n/ryqq/songDetail/xxxxx
+        r'/song/(\d+)',             # y.qq.com/song/123456
+        r'songid=(\d+)',            # 直接参数
+        r'/playsong\.html\?songid=(\d+)'  # 播放器链接
+    ]
+    songid = None
+    for pat in patterns:
+        m = re.search(pat, link)
+        if m:
+            songid = m.group(1)
+            break
+
+    if not songid:
+        return fail(msg="Could not extract song ID from link. Please provide a valid QQ Music song page or share link.")
+
+    # 生成 iframe（官方播放器，宽度自适应，高度可调整）
+    iframe_code = f'<iframe frameborder="0" border="0" marginwidth="0" marginheight="0" width="100%" height="86" src="https://i.y.qq.com/v8/playsong.html?songid={songid}&type=0"></iframe>'
+
+    return success(data={"iframe_code": iframe_code})
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

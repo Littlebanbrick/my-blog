@@ -51,7 +51,7 @@ def generate_trending_summary(repos):
         )
 
     prompt = f"""You are given the top 3 new GitHub repos created in the last 24 hours.
-Write a concise, engaging summary (around 300-400 words) in English.
+Write a concise, engaging summary in English. No greater than 2000 words totally.
 
 Structure your response as follows:
 1. Start with a one-sentence intro
@@ -78,7 +78,7 @@ Repositories:
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 900            # 增加 token 上限
+        "max_tokens": 2000            # 增加 token 上限
     }
 
     try:

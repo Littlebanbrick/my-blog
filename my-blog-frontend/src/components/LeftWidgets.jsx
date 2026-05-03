@@ -1,7 +1,8 @@
 // src/components/LeftWidgets.jsx
 import { useState, useEffect } from 'react'
 import { authFetch } from '../utils'
-import { Link} from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import SongCard from './SongCard'
 
 function ProfileCard() {
   const [profile, setProfile] = useState(null)
@@ -190,6 +191,8 @@ function ProfileCard() {
           </div>
         </div>
       </div>
+
+      <SongCard />
 
       {/* CLI ChatBot Entry */}
       <Link

@@ -21,6 +21,7 @@ import ContactPage from './components/ContactPage'
 import MessagesPage from './components/MessagePage'
 import MyMessagesPage from './components/MyMessagePage'
 import CliChatBot from './components/CliChatBot'
+import SongSettings from './components/SongSettings'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -51,6 +52,7 @@ function App() {
         <Route path="/admin/messages" element={<MessagesPage />} />
         <Route path="/my-messages" element={<MyMessagesPage />} />
         <Route path="/cli" element={<CliChatBot />} />
+        <Route path="/admin/song" element={<SongSettings />} />
       </Routes>
       <Footer />
     </BrowserRouter>
