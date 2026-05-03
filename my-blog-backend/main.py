@@ -117,6 +117,13 @@ class MessageCreate(BaseModel):
     
 class MessageReply(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
+
+class SongUpdate(BaseModel):
+    title: str = Body("")
+    artist: str = Body("")
+    url: str = Body("")
+    cover: str = Body("")
+    lrc: str = Body("")
     
 def beijing_now():
     return datetime.now(timezone(timedelta(hours=8)))
@@ -1310,15 +1317,19 @@ async def get_song():
         return success(data=None)
     return success(data={"song_id": row["song_id"]})
 
-# 管理员设置歌曲（PUT，覆盖式）
 @app.put("/api/admin/song")
-async def set_song(req: dict, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
+async def set_song(req: SongUpdate, current_user: TokenData = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    song_id = req.get("song_id", "")
-    # 删除旧记录并插入新记录（确保只有一条）
     await database.execute(song_config.delete())
-    await database.execute(song_config.insert().values(id=1, song_id=song_id))
+    await database.execute(song_config.insert().values(
+        id=1,
+        title=req.title,
+        artist=req.artist,
+        url=req.url,
+        cover=req.cover,
+        lrc=req.lrc
+    ))
     return success(msg="Song updated")
 
 # 管理员删除歌曲（可选，可以直接更新为空字符串）

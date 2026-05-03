@@ -3,107 +3,64 @@ import { Link } from 'react-router-dom';
 import { authFetch, getCurrentUser } from '../utils';
 
 function SongCard() {
-  const [songId, setSongId] = useState('');
+  const [song, setSong] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const playerContainer = useRef(null);
+  const containerRef = useRef(null);
   const apRef = useRef(null);
 
-  // 获取歌曲 ID 和管理员状态
   useEffect(() => {
-    authFetch('/api/song').then(res => res.json()).then(data => {
-      if (data.data?.song_id) setSongId(data.data.song_id);
+    authFetch('/api/song').then(r => r.json()).then(data => {
+      if (data.data?.url) setSong(data.data);
     });
-    getCurrentUser().then(user => {
-      if (user.data?.role === 'admin') setIsAdmin(true);
+    getCurrentUser().then(u => {
+      if (u.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
-  // 当 songId 变化时初始化播放器
   useEffect(() => {
-    if (!songId || !playerContainer.current) return;
+    if (!song || !containerRef.current) return;
+    if (apRef.current) { apRef.current.destroy(); apRef.current = null; }
 
-    // 清理旧播放器
-    if (apRef.current) {
-      apRef.current.destroy();
-      apRef.current = null;
-    }
-
-    // 动态加载 APlayer 的 CSS 和 JS
-    const loadAPlayer = () => {
-      return new Promise((resolve, reject) => {
-        if (window.APlayer) {
-          resolve();
-          return;
-        }
+    const load = () => {
+      if (window.APlayer) return Promise.resolve();
+      return new Promise((resolve) => {
         const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/lib/APlayer.min.css';
+        link.rel = 'stylesheet'; link.href = '/lib/APlayer.min.css';
         document.head.appendChild(link);
-
         const script = document.createElement('script');
         script.src = '/lib/APlayer.min.js';
-        script.onload = () => {
-          if (window.APlayer) resolve();
-          else reject(new Error('APlayer not loaded'));
-        };
-        script.onerror = reject;
+        script.onload = resolve;
         document.body.appendChild(script);
       });
     };
 
-    const initPlayer = async () => {
-      try {
-        await loadAPlayer();
-        // 从后端获取歌曲详情
-        const res = await authFetch(`/api/song/detail?mid=${songId}`);
-        const data = await res.json();
-        if (data.code !== 200 || !data.data?.url) {
-          console.error('Invalid song detail:', data);
-          return;
-        }
+    load().then(() => {
+      apRef.current = new window.APlayer({
+        container: containerRef.current,
+        fixed: false,
+        autoplay: false,
+        theme: '#1a365d',
+        audio: [{
+          name: song.title || 'Music',
+          artist: song.artist || 'Unknown',
+          url: song.url,
+          cover: song.cover || '',
+          lrc: song.lrc || ''
+        }]
+      });
+    });
 
-        const song = data.data;
-        apRef.current = new window.APlayer({
-          container: playerContainer.current,
-          fixed: false,
-          autoplay: false,
-          theme: '#1a365d',
-          loop: 'all',
-          order: 'list',
-          preload: 'auto',
-          volume: 0.7,
-          audio: [{
-            name: song.title || 'Unknown',
-            artist: song.artist || 'Unknown',
-            url: song.url,
-            cover: song.cover || '',
-            lrc: song.lrc || ''
-          }]
-        });
-      } catch (err) {
-        console.error('SongCard init failed:', err);
-      }
-    };
+    return () => { if (apRef.current) apRef.current.destroy(); };
+  }, [song]);
 
-    initPlayer();
-
-    return () => {
-      if (apRef.current) {
-        apRef.current.destroy();
-        apRef.current = null;
-      }
-    };
-  }, [songId]);
-
-  if (!songId) return null;
+  if (!song) return null;
 
   return (
     <div className="card widget">
       <div className="card-content" style={{ padding: '0.5rem' }}>
-        <div ref={playerContainer} style={{ minHeight: '90px' }} />
+        <div ref={containerRef} style={{ minHeight: '90px' }} />
       </div>
     </div>
   );
 }
-
 export default SongCard;
