@@ -3,9 +3,8 @@ services:
     build:
       context: .
       dockerfile: my-blog-backend/Dockerfile
-    network_mode: host
-    # ports:
-    #   - "8000:8000"
+    ports:
+      - "8000:8000"
     volumes:
       - ./data:/app/data
       - static_data:/app/static
