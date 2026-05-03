@@ -173,8 +173,8 @@ a:hover {
 /* 终端窗口 */
 .cli-terminal {
   width: 100%;
-  max-width: 800px;
-  height: 90vh;
+  max-width: 1000px;
+  height: 95vh;
   margin: 0 auto;
   background: rgba(10,10,10,0.95);
   border: 1px solid rgba(255,255,255,0.06);
@@ -204,9 +204,9 @@ a:hover {
 /* 可滚动内容 */
 .cli-terminal-content {
   flex: 1;
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 2rem;
   overflow-y: auto;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   line-height: 1.7;
   color: #aaa;
   white-space: pre-wrap;
@@ -221,10 +221,10 @@ a:hover {
 .cli-prompt {
   display: flex;
   align-items: center;
-  padding: 0.6rem 1.5rem;
+  padding: 0.8rem 2rem;
   border-top: 1px solid rgba(255,255,255,0.04);
   background: rgba(0,0,0,0.4);
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 .cli-username { color: #27c93f; }
 .cli-separator { color: #0f0; margin-right: 0.5rem; }
@@ -239,7 +239,7 @@ a:hover {
   outline: none;
   color: #0f0;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   caret-color: #0f0;
 }
 
