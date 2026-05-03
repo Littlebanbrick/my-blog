@@ -8,66 +8,76 @@ function SongCard() {
   const playerContainer = useRef(null);
   const apRef = useRef(null);
 
-  // 获取当前歌曲和管理员状态
   useEffect(() => {
     authFetch('/api/song')
       .then(res => res.json())
       .then(data => {
+        console.log('[SongCard] song_id from API:', data.data?.song_id);
         if (data.data?.song_id) setSongId(data.data.song_id);
       });
     getCurrentUser().then(user => {
+      console.log('[SongCard] user role:', user.data?.role);
       if (user.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
-  // 初始化播放器
   useEffect(() => {
-    if (!songId || !playerContainer.current) return;
+    console.log('[SongCard] current songId:', songId);
+    if (!songId || !playerContainer.current) {
+      console.warn('[SongCard] missing songId or container ref');
+      return;
+    }
 
-    // 等待 APlayer 和 Meting 可用
-    const checkInterval = setInterval(() => {
-      if (window.APlayer && window.Meting) {
-        clearInterval(checkInterval);
-        initPlayer();
-      }
-    }, 100);
+    // 检查全局对象
+    console.log('[SongCard] window.APlayer:', window.APlayer);
+    console.log('[SongCard] window.Meting:', window.Meting);
 
-    function initPlayer() {
-      // 销毁旧实例
-      if (apRef.current) {
-        apRef.current.destroy();
-        apRef.current = null;
-      }
+    if (!window.APlayer || !window.Meting) {
+      console.warn('[SongCard] APlayer or Meting not loaded yet, waiting...');
+      return;
+    }
 
-      const APlayer = window.APlayer;
-      const Meting = window.Meting;
+    // 销毁旧播放器
+    if (apRef.current) {
+      console.log('[SongCard] destroying previous APlayer instance');
+      apRef.current.destroy();
+      apRef.current = null;
+    }
 
-      apRef.current = new APlayer({
-        container: playerContainer.current,
-        fixed: false,
-        autoplay: false,
-        theme: '#1a365d',
-        loop: 'all',
-        order: 'list',
-        preload: 'auto',
-        volume: 0.7,
-        audio: []  // 空数组，由 Meting 填充
+    const APlayer = window.APlayer;
+    const Meting = window.Meting;
+
+    console.log('[SongCard] creating APlayer instance...');
+    apRef.current = new APlayer({
+      container: playerContainer.current,
+      fixed: false,
+      autoplay: false,
+      theme: '#1a365d',
+      loop: 'all',
+      order: 'list',
+      preload: 'auto',
+      volume: 0.7,
+      audio: []  // Meting 会填充
+    });
+
+    console.log('[SongCard] APlayer instance created, opts:', apRef.current.opts);
+    console.log('[SongCard] container element:', playerContainer.current);
+    console.log('[SongCard] container current HTML:', playerContainer.current.innerHTML);
+
+    try {
+      new Meting({
+        server: 'tencent',
+        type: 'song',
+        mid: songId,
+        audio: apRef.current
       });
-
-      try {
-        new Meting({
-          server: 'tencent',
-          type: 'song',
-          mid: songId,
-          audio: apRef.current
-        });
-      } catch (e) {
-        console.error('Meting init error:', e);
-      }
+      console.log('[SongCard] Meting initialized');
+    } catch (e) {
+      console.error('[SongCard] Meting init error:', e);
     }
 
     return () => {
-      clearInterval(checkInterval);
+      console.log('[SongCard] cleanup');
       if (apRef.current) {
         apRef.current.destroy();
         apRef.current = null;
@@ -82,7 +92,11 @@ function SongCard() {
       <div className="card-content" style={{ padding: '0.5rem' }}>
         <div
           ref={playerContainer}
-          style={{ minHeight: '90px', marginBottom: '0.5rem' }}
+          style={{
+            minHeight: '90px',
+            backgroundColor: '#f0f0f0',   // 临时背景，方便看容器是否存在
+            border: '1px dashed #ccc'
+          }}
         />
       </div>
     </div>
