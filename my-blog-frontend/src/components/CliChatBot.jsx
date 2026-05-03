@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 
 const COMMANDS = {
   help: {
-    description: 'Show all available commands',
     handler: () =>
       `Available commands:\n` +
       `  help     - Show this message\n` +
@@ -10,9 +9,8 @@ const COMMANDS = {
       `  clear    - Clear the terminal screen\n`
   },
   whoami: {
-    description: 'Who is the blog owner',
     handler: () =>
-`Hi! It's Johnny here.\n` + 
+`Hi! It's Johnny here.\n` +
 `Keywords: Zhejiang Univ, Python, Computer Science, freshman, Photography, Minecraft, KARDS\n\n` +
 `About Me\n` +
 `I'm a freshman majoring in Computer Science at Zhejiang University. I started learning programming once I attended college and gradually developed a strong interest in building things with Python and exploring how software works under the hood.\n` +
@@ -24,8 +22,7 @@ const COMMANDS = {
 `I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.`
   },
   clear: {
-    description: 'Clear the terminal',
-    handler: () => null
+    handler: () => null   // 特殊标记，清屏
   }
 };
 
@@ -35,33 +32,32 @@ function CliChatBot() {
     { type: 'output', text: 'Welcome to my CLI ChatBot.' },
     { type: 'output', text: 'Type "help" for available commands.' }
   ]);
-
   const [commandHistory, setCommandHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef(null);
-  const terminalRef = useRef(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+  }, []);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [history]);
 
   const handleCommand = (cmd) => {
     const trimmed = cmd.trim();
     if (trimmed === '') return;
-    // 添加到命令历史
     setCommandHistory(prev => [...prev, trimmed]);
     setHistoryIndex(-1);
-    // 添加输入行到终端历史
     setHistory(prev => [...prev, { type: 'input', text: `Littlebanbrick $ ${trimmed}` }]);
 
     const lower = trimmed.toLowerCase();
     if (COMMANDS[lower]) {
       const result = COMMANDS[lower].handler();
       if (result === null) {
-        // clear 命令
         setHistory([]);
         return;
       }
@@ -82,7 +78,6 @@ function CliChatBot() {
       handleSubmit(e);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      // 如果还没有历史记录，直接返回
       if (commandHistory.length === 0) return;
       let newIndex = historyIndex === -1 ? commandHistory.length - 1 : historyIndex - 1;
       if (newIndex < 0) newIndex = 0;
@@ -103,86 +98,56 @@ function CliChatBot() {
   };
 
   return (
-    <section
-      className="has-navbar-fixed-top"
-      style={{
-        backgroundColor: '#000',
-        minHeight: '100vh',
-        margin: 0,
-        padding: 0,
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-    >
-      {/* 全屏终端窗口 */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#111',
-          margin: 0,
-          borderRadius: 0,
-          boxShadow: 'none',
-          height: 'calc(100vh - 3.25rem)'
-        }}
-      >
-        {/* 标题栏 */}
-        <div style={{ backgroundColor: '#333', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center' }}>
-        <span style={{ color: '#ccc', fontSize: '0.9rem', fontFamily: 'monospace' }}>CLI ChatBot</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-            <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f56', display: 'inline-block' }}></span>
-            <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e', display: 'inline-block' }}></span>
-            <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#27c93f', display: 'inline-block' }}></span>
-        </div>
+    <div className="cli-fullscreen">
+      {/* 背景装饰 */}
+      <div className="cli-bg-grid" />
+      <div className="cli-circle-container">
+        <div className="cli-circle" id="cli-circle1" />
+        <div className="cli-circle" id="cli-circle2" />
+        <div className="cli-circle" id="cli-circle3" />
+      </div>
+
+      {/* 终端主体 */}
+      <div className="cli-terminal">
+        {/* 窗口按钮 */}
+        <div className="cli-terminal-header">
+          <span className="cli-dot cli-dot-red" />
+          <span className="cli-dot cli-dot-yellow" />
+          <span className="cli-dot cli-dot-green" />
         </div>
 
-        {/* 终端内容区（可滚动，隐藏滚动条） */}
-        <div
-          ref={terminalRef}
-          className="cli-terminal-container"
-          style={{
-            flex: 1,
-            padding: '1rem',
-            overflowY: 'auto',
-            fontFamily: "'Cascadia Code', 'Fira Code', monospace",
-            color: '#0f0',
-            fontSize: '0.95rem',
-            lineHeight: '1.6',
-            wordBreak: 'break-word'
-          }}
-          onClick={() => inputRef.current?.focus()}
-        >
-          {history.map((item, index) => (
-            <div key={index} style={{ whiteSpace: 'pre-wrap', color: item.type === 'input' ? '#0f0' : '#aaa' }}>
+        {/* 输出历史 */}
+        <div className="cli-terminal-content" ref={contentRef}>
+          {history.map((item, idx) => (
+            <div
+              key={idx}
+              className={`cli-line ${item.type === 'input' ? 'cli-input-line' : 'cli-output-line'}`}
+            >
               {item.text}
             </div>
           ))}
-          {/* 输入行 */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', marginTop: '0.25rem' }}>
-            <span style={{ color: '#0f0', fontFamily: "'Cascadia Code', 'Fira Code', monospace" }}>Littlebanbrick $&nbsp;</span>
+        </div>
+
+        {/* 输入行 */}
+        <form className="cli-prompt" onSubmit={handleSubmit}>
+          <span className="cli-username">/littlebanbrick</span>
+          <span className="cli-separator">$</span>
+          <span className="cli-input-container">
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: '#0f0',
-                fontFamily: "'Cascadia Code', 'Fira Code', monospace",
-                fontSize: '0.95rem',
-                caretColor: '#0f0'
-              }}
+              className="cli-input"
               autoFocus
+              spellCheck="false"
             />
-          </form>
-        </div>
+            <span className="cli-cursor">|</span>
+          </span>
+        </form>
       </div>
-    </section>
+    </div>
   );
 }
 

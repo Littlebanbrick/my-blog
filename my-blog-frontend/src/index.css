@@ -121,3 +121,138 @@ a:hover {
 .cli-terminal-container {
   scrollbar-width: none; /* Firefox */
 }
+
+/* ---------- CLI 全屏终端 ---------- */
+.cli-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* 背景网格 */
+.cli-bg-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+}
+
+/* 浮动装饰圆点 */
+.cli-circle-container {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  display: flex;
+  gap: 12px;
+  opacity: 0.15;
+  pointer-events: none;
+}
+.cli-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+#cli-circle1 { background: #ff5f56; }
+#cli-circle2 { background: #ffbd2e; }
+#cli-circle3 { background: #27c93f; }
+
+/* 终端窗口 */
+.cli-terminal {
+  width: 100%;
+  max-width: 800px;
+  height: 90vh;
+  margin: 0 auto;
+  background: rgba(10,10,10,0.95);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 30px rgba(0,255,0,0.05);
+}
+
+/* 窗口按钮栏 */
+.cli-terminal-header {
+  padding: 0.75rem 1rem;
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.cli-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.cli-dot-red    { background: #ff5f56; }
+.cli-dot-yellow { background: #ffbd2e; }
+.cli-dot-green  { background: #27c93f; }
+
+/* 可滚动内容 */
+.cli-terminal-content {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #aaa;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 隐藏滚动条 */
+.cli-terminal-content::-webkit-scrollbar { display: none; }
+.cli-terminal-content { scrollbar-width: none; }
+
+/* 输入行样式 */
+.cli-prompt {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.4);
+  font-size: 0.9rem;
+}
+.cli-username { color: #27c93f; }
+.cli-separator { color: #0f0; margin-right: 0.5rem; }
+.cli-input-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+.cli-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #0f0;
+  font-family: inherit;
+  font-size: 0.9rem;
+  flex: 1;
+  caret-color: #0f0;
+}
+.cli-cursor {
+  color: #0f0;
+  font-weight: bold;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 输入与输出行的强调 */
+.cli-input-line { color: #0f0; }
+.cli-output-line { color: #aaa; }
