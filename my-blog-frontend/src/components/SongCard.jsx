@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { authFetch, getCurrentUser } from '../utils';
+import APlayer from 'aplayer';
+import 'aplayer/dist/APlayer.min.css';
 
 function SongCard() {
   const [songId, setSongId] = useState('');
@@ -19,72 +21,45 @@ function SongCard() {
 
   useEffect(() => {
     if (!songId || !playerContainer.current) return;
-
-    // 清理旧的播放器
+    
+    // 清理旧的播放器实例
     if (apRef.current) {
       apRef.current.destroy();
       apRef.current = null;
     }
 
-    // 确保 APlayer 和 Meting 已加载
-    if (!window.APlayer || !window.Meting) {
-      // 加载 APlayer 样式
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css';
-      document.head.appendChild(link);
-
-      // 加载 APlayer 脚本
-      const scriptAP = document.createElement('script');
-      scriptAP.src = 'https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js';
-      document.body.appendChild(scriptAP);
-
-      // 加载 Meting 脚本
-      const scriptM = document.createElement('script');
-      scriptM.src = 'https://cdn.jsdelivr.net/npm/meting@2/dist/Meting.min.js';
-      scriptM.onload = () => {
-        // Meting 加载完毕后初始化
-        initPlayer();
-      };
-      document.body.appendChild(scriptM);
-    } else {
-      // 已加载，直接初始化
-      initPlayer();
-    }
-
-    function initPlayer() {
-      const APlayer = window.APlayer;
-      const Meting = window.Meting;
-      if (!APlayer || !Meting) return;
-
-      // 创建 APlayer 实例
-      apRef.current = new APlayer({
-        container: playerContainer.current,
-        fixed: false,
-        autoplay: false,
-        theme: '#1a365d',
-        loop: 'all',
-        order: 'list',
-        preload: 'auto',
-        volume: 0.7,
-        audio: []
-      });
-
-      // 用 Meting 加载歌曲
-      try {
-        new Meting({
-          server: 'tencent',
-          type: 'song',
-          mid: songId,
-          audio: apRef.current
+    // 从后端获取歌曲详情
+    authFetch(`/api/song/detail?mid=${songId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.code !== 200 || !data.data?.url) {
+          console.error('Failed to load song detail');
+          return;
+        }
+        const song = data.data;
+        
+        apRef.current = new APlayer({
+          container: playerContainer.current,
+          fixed: false,
+          autoplay: false,
+          theme: '#1a365d',
+          loop: 'all',
+          order: 'list',
+          preload: 'auto',
+          volume: 0.7,
+          audio: [{
+            name: song.title || 'Unknown',
+            artist: song.artist || 'Unknown',
+            url: song.url,
+            cover: song.cover || '',
+            lrc: song.lrc || ''
+          }]
         });
-      } catch (e) {
-        console.error('Meting init error:', e);
-      }
-    }
+      })
+      .catch(console.error);
   }, [songId]);
 
-  if (!songId && !isAdmin) return null;
+  if (!songId) return null;
 
   return (
     <div className="card widget">

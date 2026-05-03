@@ -151,7 +151,7 @@ function Header() {
 
                   {user.role === 'admin' && (
                     <>
-                      <Link to="/admin/song" className="button is-small is-light">Song</Link>
+                      <Link to="/admin/song" className="button is-small is-light">Update Music</Link>
                       <Link to="/create-post" className="button is-dark is-small">Create Post</Link>
                     </>
                   )}
