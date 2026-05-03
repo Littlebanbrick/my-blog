@@ -1,6 +1,7 @@
 // src/components/LeftWidgets.jsx
 import { useState, useEffect } from 'react'
-import { authFetch } from '../utils';
+import { authFetch } from '../utils'
+import { Link} from 'react-router-dom'
 
 function ProfileCard() {
   const [profile, setProfile] = useState(null)
@@ -189,6 +190,18 @@ function ProfileCard() {
           </div>
         </div>
       </div>
+
+      {/* CLI ChatBot Entry */}
+      <Link to="/cli" style={{ color: 'inherit', textDecoration: 'none' }}>
+        <div className="card widget" style={{ backgroundColor: '#1a1a1a', color: '#0f0', borderRadius: '8px', cursor: 'pointer' }}>
+          <div className="card-content" style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+            <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', fontWeight: 'bold' }}>
+              <i className="fas fa-terminal mr-1"></i> CLI ChatBot
+            </span>
+          </div>
+        </div>
+      </Link>
+
       <LinksCard />
     </div>
     </>
