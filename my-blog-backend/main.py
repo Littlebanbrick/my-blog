@@ -1330,7 +1330,7 @@ async def delete_song(current_user: TokenData = Depends(get_current_user), _=Dep
     return success(msg="Song removed")
 
 @app.post("/api/admin/song/lookup")
-async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_user)):
+async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403)
     link = req.get("link", "").strip()
@@ -1352,32 +1352,6 @@ async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_u
     if not songid:
         return fail(msg="Could not extract song ID")
     return success(data={"song_id": songid})
-
-@app.get("/api/song/detail")
-async def song_detail(mid: str):
-    if not mid:
-        return fail("Missing song id")
-    # 使用第三方 Meting API 获取歌曲详情
-    try:
-        resp = requests.get(
-            f"https://api.injahow.cn/meting/?server=tencent&type=song&id={mid}",
-            timeout=10
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            # 返回第一首歌曲信息
-            song = data[0] if isinstance(data, list) and data else {}
-            return success(data={
-                "title": song.get("title", ""),
-                "artist": song.get("author", ""),
-                "cover": song.get("pic", ""),
-                "url": song.get("url", ""),
-                "lrc": song.get("lrc", "")
-            })
-        else:
-            return fail("Failed to fetch song detail")
-    except Exception as e:
-        return fail(f"Internal error: {e}")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

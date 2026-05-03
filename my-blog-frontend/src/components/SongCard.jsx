@@ -8,55 +8,66 @@ function SongCard() {
   const playerContainer = useRef(null);
   const apRef = useRef(null);
 
+  // 获取当前歌曲和管理员状态
   useEffect(() => {
-    authFetch('/api/song').then(res => res.json()).then(data => {
-      if (data.data?.song_id) setSongId(data.data.song_id);
-    });
+    authFetch('/api/song')
+      .then(res => res.json())
+      .then(data => {
+        if (data.data?.song_id) setSongId(data.data.song_id);
+      });
     getCurrentUser().then(user => {
       if (user.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
+  // 初始化播放器
   useEffect(() => {
     if (!songId || !playerContainer.current) return;
 
-    // 销毁旧播放器
-    if (apRef.current) {
-      apRef.current.destroy();
-      apRef.current = null;
-    }
+    // 等待 APlayer 和 Meting 可用
+    const checkInterval = setInterval(() => {
+      if (window.APlayer && window.Meting) {
+        clearInterval(checkInterval);
+        initPlayer();
+      }
+    }, 100);
 
-    const APlayer = window.APlayer;
-    const Meting = window.Meting;
-    if (!APlayer || !Meting) return;
+    function initPlayer() {
+      // 销毁旧实例
+      if (apRef.current) {
+        apRef.current.destroy();
+        apRef.current = null;
+      }
 
-    // 创建新播放器
-    apRef.current = new APlayer({
-      container: playerContainer.current,
-      fixed: false,
-      autoplay: false,
-      theme: '#1a365d',
-      loop: 'all',
-      order: 'list',
-      preload: 'auto',
-      volume: 0.7,
-      audio: []   // 音频列表留空，由 Meting 填充
-    });
+      const APlayer = window.APlayer;
+      const Meting = window.Meting;
 
-    // 使用 Meting 从 QQ 音乐获取歌曲信息
-    try {
-      new Meting({
-        server: 'tencent',
-        type: 'song',
-        mid: songId,
-        audio: apRef.current
+      apRef.current = new APlayer({
+        container: playerContainer.current,
+        fixed: false,
+        autoplay: false,
+        theme: '#1a365d',
+        loop: 'all',
+        order: 'list',
+        preload: 'auto',
+        volume: 0.7,
+        audio: []  // 空数组，由 Meting 填充
       });
-    } catch (e) {
-      console.error('Meting init error:', e);
+
+      try {
+        new Meting({
+          server: 'tencent',
+          type: 'song',
+          mid: songId,
+          audio: apRef.current
+        });
+      } catch (e) {
+        console.error('Meting init error:', e);
+      }
     }
 
-    // 清理函数
     return () => {
+      clearInterval(checkInterval);
       if (apRef.current) {
         apRef.current.destroy();
         apRef.current = null;
@@ -69,7 +80,10 @@ function SongCard() {
   return (
     <div className="card widget">
       <div className="card-content" style={{ padding: '0.5rem' }}>
-        <div ref={playerContainer} />
+        <div
+          ref={playerContainer}
+          style={{ minHeight: '90px', marginBottom: '0.5rem' }}
+        />
       </div>
     </div>
   );
