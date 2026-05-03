@@ -16,6 +16,7 @@ const COMMANDS = {
       `Available commands:\n` +
       `  help     - Show this message\n` +
       `  whoami   - Display information about the blog owner\n` +
+      `  whatis   - Introduce something you would like to know` +
       `  clear    - Clear the terminal screen\n`
   },
   whoami: {
