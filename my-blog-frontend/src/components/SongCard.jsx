@@ -20,32 +20,44 @@ function SongCard() {
   useEffect(() => {
     if (!songId || !playerContainer.current) return;
 
-    // 动态引入 APlayer 和 Meting（避免 npm 包）
-    if (!window.APlayer) {
+    // 清理旧的播放器
+    if (apRef.current) {
+      apRef.current.destroy();
+      apRef.current = null;
+    }
+
+    // 确保 APlayer 和 Meting 已加载
+    if (!window.APlayer || !window.Meting) {
+      // 加载 APlayer 样式
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.css';
       document.head.appendChild(link);
 
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js';
-      script.onload = () => {
+      // 加载 APlayer 脚本
+      const scriptAP = document.createElement('script');
+      scriptAP.src = 'https://cdn.jsdelivr.net/npm/aplayer/dist/APlayer.min.js';
+      document.body.appendChild(scriptAP);
+
+      // 加载 Meting 脚本
+      const scriptM = document.createElement('script');
+      scriptM.src = 'https://cdn.jsdelivr.net/npm/meting@2/dist/Meting.min.js';
+      scriptM.onload = () => {
+        // Meting 加载完毕后初始化
         initPlayer();
       };
-      document.body.appendChild(script);
+      document.body.appendChild(scriptM);
     } else {
+      // 已加载，直接初始化
       initPlayer();
     }
 
     function initPlayer() {
-      if (apRef.current) {
-        apRef.current.destroy();
-        apRef.current = null;
-      }
-
       const APlayer = window.APlayer;
-      if (!APlayer) return;
+      const Meting = window.Meting;
+      if (!APlayer || !Meting) return;
 
+      // 创建 APlayer 实例
       apRef.current = new APlayer({
         container: playerContainer.current,
         fixed: false,
@@ -58,20 +70,17 @@ function SongCard() {
         audio: []
       });
 
-      // 使用 Meting 从 QQ 音乐获取歌曲
-      const metScript = document.createElement('script');
-      metScript.src = 'https://cdn.jsdelivr.net/npm/meting@2/dist/Meting.min.js';
-      metScript.onload = () => {
-        const Meting = window.Meting;
-        if (!Meting) return;
+      // 用 Meting 加载歌曲
+      try {
         new Meting({
           server: 'tencent',
           type: 'song',
           mid: songId,
           audio: apRef.current
         });
-      };
-      document.body.appendChild(metScript);
+      } catch (e) {
+        console.error('Meting init error:', e);
+      }
     }
   }, [songId]);
 
@@ -81,14 +90,6 @@ function SongCard() {
     <div className="card widget">
       <div className="card-content" style={{ padding: '0.5rem' }}>
         <div ref={playerContainer} />
-        {isAdmin && (
-          <div className="has-text-right mt-2">
-            <Link to="/admin/song" className="button is-small is-dark is-light" style={{ fontSize: '0.8rem' }}>
-              <span className="icon"><i className="fas fa-edit"></i></span>
-              <span>Edit</span>
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

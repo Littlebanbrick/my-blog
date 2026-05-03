@@ -142,7 +142,7 @@ function Header() {
                   ) : (
                     <Link
                       to="/admin/messages"
-                      className={`button is-small is-light ${unread > 0 ? 'pulse-animation' : ''}`}
+                      className={`button is-small is-dark ${unread > 0 ? 'pulse-animation' : ''}`}
                     >
                       View Messages
                       {unread > 0 && <span className="badge">{unread}</span>}
@@ -150,6 +150,7 @@ function Header() {
                   )}
 
                   {user.role === 'admin' && (
+                    <Link to="/admin/song" className="button is-small is-light">Song</Link>
                     <Link to="/create-post" className="button is-dark is-small">Create Post</Link>
                   )}
 
