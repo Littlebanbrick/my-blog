@@ -1309,13 +1309,18 @@ async def delete_message(message_id: int, current_user: TokenData = Depends(get_
         await database.execute(messages.delete().where(messages.c.id == message_id))
     return success(msg="Message deleted")
 
-# 获取当前歌曲（公开）
 @app.get("/api/song")
 async def get_song():
     row = await database.fetch_one(song_config.select().where(song_config.c.id == 1))
     if not row:
         return success(data=None)
-    return success(data={"song_id": row["song_id"]})
+    return success(data={
+        "title": row["title"],
+        "artist": row["artist"],
+        "url": row["url"],
+        "cover": row["cover"],
+        "lrc": row["lrc"]
+    })
 
 @app.put("/api/admin/song")
 async def set_song(req: SongUpdate, current_user: TokenData = Depends(get_current_user)):
