@@ -36,7 +36,7 @@ import bcrypt
 # Automatically eliminate unverified users
 import asyncio
 
-from github_trending import trending_scheduler
+from github_trending import trending_scheduler, update_trending_post
 
 app = FastAPI()
 
