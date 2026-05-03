@@ -10,34 +10,36 @@ function SongCard() {
   const playerContainer = useRef(null);
   const apRef = useRef(null);
 
+  // 获取当前歌曲 ID 和管理员状态
   useEffect(() => {
-    authFetch('/api/song').then(res => res.json()).then(data => {
-      if (data.data?.song_id) setSongId(data.data.song_id);
-    });
+    authFetch('/api/song')
+      .then(res => res.json())
+      .then(data => {
+        if (data.data?.song_id) setSongId(data.data.song_id);
+      });
     getCurrentUser().then(user => {
       if (user.data?.role === 'admin') setIsAdmin(true);
     });
   }, []);
 
+  // 当 songId 变化时，加载歌曲细节并初始化播放器
   useEffect(() => {
     if (!songId || !playerContainer.current) return;
-    
-    // 清理旧的播放器实例
+
+    // 清理旧的播放器
     if (apRef.current) {
       apRef.current.destroy();
       apRef.current = null;
     }
 
-    // 从后端获取歌曲详情
+    let cancelled = false;
+
     authFetch(`/api/song/detail?mid=${songId}`)
       .then(res => res.json())
       .then(data => {
-        if (data.code !== 200 || !data.data?.url) {
-          console.error('Failed to load song detail');
-          return;
-        }
+        if (cancelled || data.code !== 200 || !data.data) return;
+
         const song = data.data;
-        
         apRef.current = new APlayer({
           container: playerContainer.current,
           fixed: false,
@@ -57,8 +59,11 @@ function SongCard() {
         });
       })
       .catch(console.error);
+
+    return () => { cancelled = true; };
   }, [songId]);
 
+  // 没有歌曲时不显示
   if (!songId) return null;
 
   return (
