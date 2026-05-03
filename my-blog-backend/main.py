@@ -1307,17 +1307,17 @@ async def get_song():
     row = await database.fetch_one(song_config.select().where(song_config.c.id == 1))
     if not row:
         return success(data=None)
-    return success(data={"iframe_code": row["iframe_code"]})
+    return success(data={"song_id": row["song_id"]})
 
 # 管理员设置歌曲（PUT，覆盖式）
 @app.put("/api/admin/song")
 async def set_song(req: dict, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    iframe_code = req.get("iframe_code", "")
+    song_id = req.get("song_id", "")
     # 删除旧记录并插入新记录（确保只有一条）
     await database.execute(song_config.delete())
-    await database.execute(song_config.insert().values(id=1, iframe_code=iframe_code))
+    await database.execute(song_config.insert().values(id=1, song_id=song_id))
     return success(msg="Song updated")
 
 # 管理员删除歌曲（可选，可以直接更新为空字符串）
@@ -1331,17 +1331,15 @@ async def delete_song(current_user: TokenData = Depends(get_current_user), _=Dep
 @app.post("/api/admin/song/lookup")
 async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_user)):
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+        raise HTTPException(status_code=403)
     link = req.get("link", "").strip()
     if not link:
-        return fail(msg="Please provide a QQ Music song link")
+        return fail(msg="No link provided")
 
-    # 尝试多种常见链接格式提取 songid
     patterns = [
-        r'/songDetail/(\w+)',          # y.qq.com/.../songDetail/000xxx
-        r'/song/(\w+)',                # y.qq.com/song/000xxx
-        r'songid=(\w+)',               # playsong.html?songid=000xxx
-        r'/(\w+)\.html',               # 一些老旧链接
+        r'/songDetail/(\w+)',
+        r'/song/(\w+)',
+        r'songid=(\w+)',
     ]
     songid = None
     for pat in patterns:
@@ -1351,12 +1349,8 @@ async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_u
             break
 
     if not songid:
-        return fail(msg="Could not extract song ID from link. Please provide a valid QQ Music song page or share link.")
-
-    # 生成 iframe（官方播放器，宽度自适应，高度可调整）
-    iframe_code = f'<iframe frameborder="0" border="0" marginwidth="0" marginheight="0" width="100%" height="86" src="https://i.y.qq.com/v8/playsong.html?songid={songid}&type=0"></iframe>'
-
-    return success(data={"iframe_code": iframe_code})
+        return fail(msg="Could not extract song ID")
+    return success(data={"song_id": songid})
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

@@ -72,6 +72,13 @@ a:hover {
   align-self: flex-start;
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sticky-sidebar::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari */
 }
 
 @keyframes pulse {

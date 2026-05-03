@@ -104,7 +104,7 @@ song_config = sqlalchemy.Table(
     "song_config",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("iframe_code", Text),
+    Column("song_id", String(50)),
 )
 
 engine = create_engine(
