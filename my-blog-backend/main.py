@@ -1338,10 +1338,10 @@ async def lookup_song(req: dict, current_user: TokenData = Depends(get_current_u
 
     # 尝试多种常见链接格式提取 songid
     patterns = [
-        r'/songDetail/(\w+)',       # y.qq.com/n/ryqq/songDetail/xxxxx
-        r'/song/(\d+)',             # y.qq.com/song/123456
-        r'songid=(\d+)',            # 直接参数
-        r'/playsong\.html\?songid=(\d+)'  # 播放器链接
+        r'/songDetail/(\w+)',          # y.qq.com/.../songDetail/000xxx
+        r'/song/(\w+)',                # y.qq.com/song/000xxx
+        r'songid=(\w+)',               # playsong.html?songid=000xxx
+        r'/(\w+)\.html',               # 一些老旧链接
     ]
     songid = None
     for pat in patterns:
