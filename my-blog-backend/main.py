@@ -283,7 +283,6 @@ async def startup():
     await database.connect()
     asyncio.create_task(cleanup_unverified_users())
     asyncio.create_task(trending_scheduler())
-    await update_trending_post()
 
 @app.on_event("shutdown")
 async def shutdown():
