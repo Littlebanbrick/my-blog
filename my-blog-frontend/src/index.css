@@ -359,6 +359,15 @@ a:hover {
   height: 24px;
 }
 
+/* 浅色模式下的按钮和标题颜色修复 */
+html:not(.dark-mode) .button.is-light {
+  color: #363636 !important;
+}
+
+html:not(.dark-mode) .menu-label {
+  color: #7a7a7a !important;
+}
+
 /* ========== 深色模式 ========== */
 html.dark-mode body {
   background-color: #1e1e1e !important;
@@ -413,6 +422,10 @@ html.dark-mode a.tag.is-dark {
 /* 一小部分特定链接恢复原色（可选） */
 html.dark-mode .button.is-dark {
   color: white !important;
+}
+
+html.dark-mode .menu-label {
+  color: #ccc !important;
 }
 
 html.dark-mode .button.is-light {
