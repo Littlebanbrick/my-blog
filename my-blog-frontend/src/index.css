@@ -275,6 +275,42 @@ a:hover {
   margin-right: 10px;
 }
 
+.card .aplayer .aplayer-pic {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: 5px !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin: 0 !important;
+  border-radius: 4px;
+}
+
+.card .aplayer .aplayer-info {
+  margin-left: 75px !important;   /* 给封面留出空间 */
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.card .aplayer .aplayer-music {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px;
+}
+
+.card .aplayer .aplayer-title {
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.card .aplayer .aplayer-author {
+  font-size: 12px !important;
+  color: #888 !important;
+  line-height: 1.2 !important;
+}
+
 /* 标题和作者垂直居中 */
 .card.widget .aplayer .aplayer-info {
   margin-left: 76px;
