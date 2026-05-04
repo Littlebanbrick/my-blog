@@ -415,6 +415,10 @@ html.dark-mode .button.is-dark {
   color: white !important;
 }
 
+html.dark-mode .button.is-light {
+  color: #333 !important;
+}
+
 /* 播放器卡片 */
 html.dark-mode .aplayer {
   background: transparent !important;

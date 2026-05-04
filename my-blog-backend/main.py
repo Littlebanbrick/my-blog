@@ -304,10 +304,11 @@ def read_root():
 async def get_posts():
     query = posts.select().order_by(desc(posts.c.date))
     rows = await database.fetch_all(query)
-    result = []
+
+    trending = None
+    others = []
     for row in rows:
         post = dict(row)
-        # Ask for the first 4 images
         imgs = await database.fetch_all(
             post_images.select()
             .where(post_images.c.post_id == post["id"])
@@ -315,7 +316,13 @@ async def get_posts():
             .limit(4)
         )
         post["images"] = [img["url"] for img in imgs]
-        result.append(post)
+
+        if post["title"] == "🤖 GitHub Trending Today":
+            trending = post
+        else:
+            others.append(post)
+
+    result = [trending] + others if trending else others
     return success(data=result)
 
 @app.get("/api/profile")
