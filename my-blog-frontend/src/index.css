@@ -465,3 +465,42 @@ html.dark-mode .tag.is-info {
   background-color: #3273dc !important;
   color: white !important;
 }
+
+/* ===== 锁定笔记区域为浅色主题，永远不受深色模式影响 ===== */
+.content.markdown-body,
+.content.markdown-body * {
+  background-color: #ffffff !important;
+  color: #24292e !important;            /* GitHub 标准正文色 */
+}
+
+/* 链接单独还原为 GitHub 蓝色 */
+.content.markdown-body a {
+  color: #0366d6 !important;
+}
+
+/* 内联代码 */
+.content.markdown-body code {
+  color: #e01e5a !important;
+  background-color: #f6f8fa !important;
+}
+
+/* 代码块 */
+.content.markdown-body pre {
+  background-color: #f6f8fa !important;
+  color: #24292e !important;
+}
+
+/* 引用的左边框和文字 */
+.content.markdown-body blockquote {
+  border-left: 4px solid #dfe2e5 !important;
+  color: #6a737d !important;
+}
+
+/* 表格 */
+.content.markdown-body table th,
+.content.markdown-body table td {
+  border-color: #dfe2e5 !important;
+  background-color: #ffffff !important;
+}
+
+/* 加粗和斜体等保持原样，无需额外设置，因为已用 * 全部重置 */
