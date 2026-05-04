@@ -239,19 +239,15 @@ function MomentList() {
                       >
                         <div className="media-content">
                           <strong className="mr-2">{comment.author}:</strong>
+                          {comment.parent_author && (
+                            <span className="has-text-grey is-size-7">
+                              reply to <strong>{comment.parent_author}</strong>{' '}
+                            </span>
+                          )}
                           <span><i>{comment.content}</i></span>
                         </div>
                       </div>
                     ))}
-
-                    {comments.length > 5 && (
-                      <button
-                        className="button is-text is-small"
-                        onClick={(e) => toggleShowAll(e, item.id)}
-                      >
-                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
-                      </button>
-                    )}
                   </div>
                 )}
               </article>

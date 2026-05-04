@@ -18,6 +18,12 @@ function ArchivesPage() {
     return b.date.localeCompare(a.date);
   });
 
+  // 始终将 Trending 帖子放在最前面
+  const trendingPost = sorted.find(p => p.title === '🤖 GitHub Trending Today');
+  const finalPosts = trendingPost
+    ? [trendingPost, ...sorted.filter(p => p.id !== trendingPost.id)]
+    : sorted;
+
   const handlePostRightClick = async (e, postId) => {
     e.preventDefault();
     const userRes = await getCurrentUser();
@@ -54,7 +60,7 @@ function ArchivesPage() {
         </div>
 
         <div className="archives-columns">
-          {sorted.map(post => {
+          {finalPosts.map(post => {
             const validImages = (post.images || []).filter(url => url && url.trim() !== '');
             return (
               <Link
