@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { authFetch } from '../utils'
 import { Link } from 'react-router-dom'
 import SongCard from './SongCard'
+import { useTheme } from '../context/ThemeContext'
 
 function ProfileCard() {
   const [profile, setProfile] = useState(null)
@@ -103,6 +104,8 @@ function ProfileCard() {
     return <div className="card widget"><div className="card-content">Loading profile...</div></div>;
   }
 
+  const { darkMode } = useTheme();
+
   return (
     <>
     <div className={loading ? '' : 'moment-slide-up'}>
@@ -176,7 +179,7 @@ function ProfileCard() {
           <div>
             <hr />
             <span id="hitokoto" onClick={authFetchQuote} style={{ cursor: 'pointer' }}>
-              <strong style={{ color: '#000000' }}>{quote.text}</strong>
+              <strong style={{ color: darkMode ? '#ffffff' : '#000000' }}>{quote.text}</strong>
               {quote.from && (
                 <div className="has-text-right">
                   — From《{quote.from}》

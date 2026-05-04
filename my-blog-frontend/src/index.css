@@ -358,3 +358,93 @@ a:hover {
   width: 24px;
   height: 24px;
 }
+
+/* ========== 深色模式 ========== */
+html.dark-mode body {
+  background-color: #1e1e1e !important;
+  color: #ddd;
+}
+
+html.dark-mode .section {
+  background-color: transparent !important; /* 如果有背景可以透明 */
+}
+
+/* 卡片背景 */
+html.dark-mode .card {
+  background-color: #2a2a2a !important;
+  color: #ddd;
+}
+
+html.dark-mode .card-content {
+  color: #ddd;
+}
+
+html.dark-mode .navbar {
+  background-color: #2a2a2a !important;
+  border-bottom: 1px solid #444;
+}
+
+html.dark-mode .navbar-item {
+  color: #ddd;
+}
+
+html.dark-mode .footer {
+  background-color: #2a2a2a !important;
+  color: #bbb;
+}
+
+/* 标题和一般文字 */
+html.dark-mode .title,
+html.dark-mode .subtitle,
+html.dark-mode h1, h2, h3, h4, h5, h6 {
+  color: #eee !important;
+}
+
+/* 链接颜色（全局） */
+html.dark-mode a {
+  color: #6cb4ff !important; /* 浅蓝色，比默认深蓝更清晰 */
+}
+
+/* 防止项目卡片标题也是深蓝色 */
+html.dark-mode a.tag.is-dark {
+  color: white !important;
+}
+
+/* 一小部分特定链接恢复原色（可选） */
+html.dark-mode .button.is-dark {
+  color: white !important;
+}
+
+/* 播放器卡片 */
+html.dark-mode .aplayer {
+  background: transparent !important;
+  color: #ccc;
+}
+html.dark-mode .aplayer .aplayer-info .aplayer-music .aplayer-title {
+  color: #eee !important;
+}
+html.dark-mode .aplayer .aplayer-info .aplayer-music .aplayer-author {
+  color: #aaa !important;
+}
+html.dark-mode .aplayer .aplayer-controller .aplayer-time {
+  color: #aaa !important;
+}
+
+/* 一言的文字 */
+html.dark-mode #hitokoto strong {
+  color: #fff !important;
+}
+
+/* 输入框、文本域 */
+html.dark-mode .input,
+html.dark-mode .textarea {
+  background-color: #333 !important;
+  color: #ddd !important;
+  border-color: #555 !important;
+}
+
+/* 标记标签 */
+html.dark-mode .tag.is-info {
+  background-color: #3273dc !important;
+  color: white !important;
+}
