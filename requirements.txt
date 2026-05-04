@@ -13,3 +13,5 @@ aiosqlite
 cryptography
 requests
 schedule
+beautifulsoup4
+lxml

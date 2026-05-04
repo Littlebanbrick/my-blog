@@ -1,84 +1,90 @@
 import requests
+from bs4 import BeautifulSoup
+import re
 import os
-from datetime import datetime, timedelta, timezone
-import asyncio
-from dotenv import load_dotenv
-load_dotenv()
+from datetime import datetime, timezone, timedelta
 
 TZ_BEIJING = timezone(timedelta(hours=8))
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 
 def fetch_github_trending():
-    """获取过去 1 天内创建的最热门 3 个仓库"""
-    one_day_ago = (datetime.now(TZ_BEIJING) - timedelta(days=1)).strftime("%Y-%m-%d")
-    url = "https://api.github.com/search/repositories"
-    params = {
-        "q": f"stars:>50 created:>{one_day_ago}",
-        "sort": "stars",
-        "order": "desc",
-        "per_page": 3
+    """抓取 GitHub Trending 页面，返回前三个仓库信息"""
+    url = "https://github.com/trending"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    headers = {"Accept": "application/vnd.github.v3+json"}
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        if resp.status_code == 200:
-            return resp.json().get("items", [])
-        else:
-            print(f"GitHub API error: {resp.status_code}")
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            print(f"Failed to fetch trending: {resp.status_code}")
             return []
+
+        soup = BeautifulSoup(resp.text, "lxml")
+        repos = []
+        # 选取所有文章卡片
+        articles = soup.select("article.Box-row")[:3]  # 取前3个
+        for article in articles:
+            # 仓库名
+            h2 = article.select_one("h2")
+            if not h2:
+                continue
+            full_name = h2.get_text(strip=True).replace(" ", "").replace("\n", "")
+            # 描述
+            desc_p = article.select_one("p[class*='col-9']")
+            description = desc_p.get_text(strip=True) if desc_p else ""
+            # 语言
+            lang_span = article.select_one("span[itemprop='programmingLanguage']")
+            language = lang_span.get_text(strip=True) if lang_span else "Unknown"
+            # 今日 stars
+            stars_span = article.select_one("span.d-inline-block.float-sm-right")
+            stars_today = stars_span.get_text(strip=True) if stars_span else "0"
+            # 总 stars
+            total_stars = article.select_one("a[href*='/stargazers']")
+            total_stars_text = total_stars.get_text(strip=True) if total_stars else "0"
+
+            repos.append({
+                "full_name": full_name,
+                "description": description,
+                "language": language,
+                "stars_today": stars_today,
+                "total_stars": total_stars_text
+            })
+        return repos
     except Exception as e:
-        print(f"Failed to fetch trending: {e}")
+        print(f"Trending scraping error: {e}")
         return []
 
 def generate_trending_summary(repos):
+    """用 LLM 生成英文总结"""
     if not repos:
-        return "No notable repositories in the last 24 hours."
+        return "No trending repos found today."
 
+    # 构建简洁的仓库描述
     repo_lines = []
     for r in repos:
-        name = r["full_name"]
-        desc = r.get("description") or "No description"
-        stars = r["stargazers_count"]
-        language = r.get("language") or "N/A"
-        topics = r.get("topics", [])
-        topics_str = ", ".join(topics[:3]) if topics else "none"
-        forks = r.get("forks_count", 0)
-        url = r["html_url"]
-        repo_lines.append(
-            f"- **[{name}]({url})** ({stars}⭐, {language}, {forks} forks)\n"
-            f"  {desc}\n  Topics: {topics_str}"
-        )
+        repo_lines.append(f"- **{r['full_name']}** ({r['language']}, {r['total_stars']} total stars, {r['stars_today']} today): {r['description']}")
 
-    prompt = f"""You are given the top 3 new GitHub repos created in the last 24 hours.
-Write a concise, engaging summary in English. No greater than 2000 words totally.
-
-Structure your response as follows:
-1. Start with a one-sentence intro
-2. Then for **each** of the 3 repositories, provide:
-   - A sub-heading with the repo name
-   - A 2-3 sentence description: what it does, why it's interesting, key features
-3. End with a short recommendation or closing remark.
-
-Make sure to cover ALL THREE repositories.
-
-No emojis.
+    prompt = f"""Here are the top 3 trending GitHub repositories right now.
+Write a brief, engaging summary (about 200-250 words) in English.
+For each project, explain what it does and why it's interesting.
+End with a short recommendation for developers.
 
 Repositories:
 {chr(10).join(repo_lines)}"""
 
     if not DEEPSEEK_API_KEY:
-        return "LLM not configured. Set DEEPSEEK_API_KEY in .env."
+        return "LLM not configured."
 
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 2000            # 增加 token 上限
+        "max_tokens": 800
     }
 
     try:
@@ -91,15 +97,15 @@ Repositories:
         if resp.status_code == 200:
             return resp.json()["choices"][0]["message"]["content"]
         else:
-            return f"LLM error: {resp.status_code}"
+            return f"LLM error: {resp.status_code} {resp.text}"
     except Exception as e:
         return f"LLM request failed: {e}"
 
 async def update_trending_post():
-    """替换旧的 trending 帖子为新生成的一篇"""
+    """替换旧的 trending 帖子，生成新的"""
     from main import database, posts, get_current_time
 
-    # 删除旧的 trending 帖子
+    # 删除上一条 trending 帖子
     await database.execute(
         posts.delete().where(posts.c.title == "🤖 GitHub Trending Today")
     )
@@ -120,12 +126,13 @@ async def update_trending_post():
     await database.execute(query)
 
 async def trending_scheduler():
-    """每小时检查一次，到次日 0 点（北京时间）时更新"""
+    """每天 0 点（北京时间）执行一次"""
     while True:
         now = datetime.now(TZ_BEIJING)
         next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         wait_seconds = (next_midnight - now).total_seconds()
         await asyncio.sleep(wait_seconds)
+
         try:
             await update_trending_post()
         except Exception as e:

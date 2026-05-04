@@ -258,3 +258,64 @@ a:hover {
 /* 输入与输出行的强调 */
 .cli-input-line { color: #0f0; }
 .cli-output-line { color: #aaa; }
+
+/* 修复 APlayer 卡片布局 */
+.card.widget .aplayer {
+  margin: 0;
+  box-shadow: none;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+/* 封面与信息对齐 */
+.card.widget .aplayer .aplayer-pic {
+  width: 66px;
+  height: 66px;
+  float: left;
+  margin-right: 10px;
+}
+
+/* 标题和作者垂直居中 */
+.card.widget .aplayer .aplayer-info {
+  margin-left: 76px;
+  height: 66px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card.widget .aplayer .aplayer-info .aplayer-music {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card.widget .aplayer .aplayer-info .aplayer-music .aplayer-title {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.card.widget .aplayer .aplayer-info .aplayer-music .aplayer-author {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+}
+
+/* 隐藏 lrc 按钮 */
+.card.widget .aplayer .aplayer-lrc {
+  display: none;
+}
+
+/* 进度条和按钮区域 */
+.card.widget .aplayer .aplayer-controller {
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+/* 播放按钮大小 */
+.card.widget .aplayer .aplayer-icon {
+  width: 24px;
+  height: 24px;
+}
