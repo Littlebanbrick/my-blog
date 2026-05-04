@@ -1423,6 +1423,16 @@ async def song_detail(mid: str):
         })
     except Exception as e:
         return fail(f"Internal error: {e}")
+    
+@app.get("/api/admin/music-files")
+async def get_music_files(current_user: TokenData = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    music_dir = os.path.join(os.path.dirname(__file__), "static/music")
+    if not os.path.exists(music_dir):
+        return success(data=[])
+    files = [f for f in os.listdir(music_dir) if f.lower().endswith('.mp3')]
+    return success(data=files)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

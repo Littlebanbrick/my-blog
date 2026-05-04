@@ -228,6 +228,7 @@ function MomentList() {
                   </div>
                 )}
 
+                {/* 内联评论区 */}
                 {comments.length > 0 && (
                   <div className="comments-inline mt-3">
                     {displayedComments.map(comment => (
@@ -248,6 +249,16 @@ function MomentList() {
                         </div>
                       </div>
                     ))}
+
+                    {/* Show all / Show less 按钮 */}
+                    {comments.length > 5 && (
+                      <button
+                        className="button is-text is-small mt-2"
+                        onClick={(e) => toggleShowAll(e, item.id)}
+                      >
+                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
+                      </button>
+                    )}
                   </div>
                 )}
               </article>
