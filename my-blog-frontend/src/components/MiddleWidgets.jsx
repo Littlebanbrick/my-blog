@@ -239,13 +239,20 @@ function MomentList() {
                         onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
                       >
                         <div className="media-content">
-                          <strong className="mr-2">{comment.author}:</strong>
-                          {comment.parent_author && (
-                            <span className="has-text-grey is-size-7">
-                              reply to <strong>{comment.parent_author}</strong>{' '}
-                            </span>
+                          {comment.parent_author ? (
+                            <>
+                              <strong className="mr-2">{comment.author}</strong>
+                              <span className="has-text-grey is-size-7">reply to </span>
+                              <strong style={{ color: 'white' }}>{comment.parent_author}</strong>
+                              <span>: </span>
+                              <i>{comment.content}</i>
+                            </>
+                          ) : (
+                            <>
+                              <strong className="mr-2">{comment.author}:</strong>
+                              <i>{comment.content}</i>
+                            </>
                           )}
-                          <span><i>{comment.content}</i></span>
                         </div>
                       </div>
                     ))}
