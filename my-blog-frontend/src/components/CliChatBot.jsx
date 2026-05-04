@@ -27,7 +27,7 @@ const COMMANDS = {
 `I'm a freshman majoring in Computer Science at Zhejiang University. I started learning programming once I attended college and gradually developed a strong interest in building things with Python and exploring how software works under the hood.\n` +
 `I enjoy creating small but practical projects, experimenting with new ideas, and improving my problem-solving skills through hands-on development. Recently, I've been exploring broader areas in computer science and llms while building a solid technical foundation.\n\n` +
 `Hobbies\n` +
-`Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light.` +
+`Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light. ` +
 `I love the scenery there in my hometown, Shenzhen (in Guangdong Province, China), which is a beautiful city with kind people around me.\n` +
 `I also spend time playing games like Minecraft and KARDS, which are two of my few favorite games.\n\n` +
 `I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.\n` +
