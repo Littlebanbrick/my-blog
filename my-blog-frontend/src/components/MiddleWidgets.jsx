@@ -243,7 +243,7 @@ function MomentList() {
                             <>
                               <strong className="mr-2">{comment.author}</strong>
                               <span className="has-text-grey is-size-7">reply to </span>
-                              <strong style={{ color: 'white' }}>{comment.parent_author}</strong>
+                              <strong>{comment.parent_author}</strong>
                               <span>: </span>
                               <i>{comment.content}</i>
                             </>
