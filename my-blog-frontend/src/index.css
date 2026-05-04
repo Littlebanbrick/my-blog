@@ -259,74 +259,102 @@ a:hover {
 .cli-input-line { color: #0f0; }
 .cli-output-line { color: #aaa; }
 
-/* APlayer 卡片样式美化 */
+/* 修复 APlayer 卡片布局 */
 .card.widget .aplayer {
   margin: 0;
   box-shadow: none;
   border-radius: 6px;
   font-family: inherit;
+  min-height: 0 !important;
 }
 
-/* 自适应大小，无多余留白 */
+/* 封面与信息对齐 */
 .card.widget .aplayer .aplayer-pic {
-  width: 60px;
-  height: 60px;
-  margin: 0;
-  float: none;
-  display: flex;
-  align-items: center;
+  width: 66px;
+  height: 66px;
+  float: left;
+  margin-right: 10px;
 }
 
-/* 封面图片规范 */
-.card.widget .aplayer .aplayer-pic img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.card .aplayer .aplayer-pic {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: 5px !important;
+  width: 60px !important;
+  height: 60px !important;
+  margin: 0 !important;
   border-radius: 4px;
 }
 
-/* 右侧信息区域：与封面同高，垂直居中 */
+.card .aplayer .aplayer-info {
+  margin-left: 75px !important;   /* 给封面留出空间 */
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.card .aplayer .aplayer-music {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px;
+}
+
+.card .aplayer .aplayer-title {
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+}
+
+.card .aplayer .aplayer-author {
+  font-size: 12px !important;
+  color: #888 !important;
+  line-height: 1.2 !important;
+}
+
+/* 标题和作者垂直居中 */
 .card.widget .aplayer .aplayer-info {
-  height: 60px;
-  margin-left: 70px;
+  margin-left: 76px;
+  height: 60px !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-/* 标题和作者 */
-.card.widget .aplayer .aplayer-music {
+.card.widget .aplayer .aplayer-info .aplayer-music {
   margin: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.card.widget .aplayer .aplayer-title {
+.card.widget .aplayer .aplayer-info .aplayer-music .aplayer-title {
   font-size: 13px;
   line-height: 1.4;
 }
 
-.card.widget .aplayer .aplayer-author {
+.card.widget .aplayer .aplayer-info .aplayer-music .aplayer-author {
   font-size: 11px;
   color: #888;
   line-height: 1.4;
 }
 
-/* 隐藏歌词按钮，保持简洁 */
+/* 隐藏 lrc 按钮 */
 .card.widget .aplayer .aplayer-lrc {
   display: none;
+  height: 0 !important;
+  overflow: hidden;
 }
 
-/* 底部控制栏：紧凑布局 */
+/* 进度条和按钮区域 */
 .card.widget .aplayer .aplayer-controller {
-  height: 30px;
+  height: 26px !important;
   display: flex;
   align-items: center;
 }
 
-/* 调整播放按钮大小 */
+/* 播放按钮大小 */
 .card.widget .aplayer .aplayer-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
