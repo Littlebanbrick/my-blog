@@ -402,7 +402,7 @@ html.dark-mode h1, h2, h3, h4, h5, h6 {
 
 /* 链接颜色（全局） */
 html.dark-mode a {
-  color: #6cb4ff !important; /* 浅蓝色，比默认深蓝更清晰 */
+  color: #ddd !important;
 }
 
 /* 防止项目卡片标题也是深蓝色 */

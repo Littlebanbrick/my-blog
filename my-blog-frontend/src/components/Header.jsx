@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authFetch, getCurrentUser } from '../utils'
-import { useTheme } from '../context/ThemeContext';
 
 function Header() {
   const [isActive, setIsActive] = useState(false)
@@ -73,8 +72,6 @@ function Header() {
       window.location.href = '/'; // 刷新页面，触发 Header 重新获取用户信息
     }
   };
-
-  const { darkMode, toggleDarkMode } = useTheme();
 
   return (
     <nav className="navbar is-fixed-top" role="navigation" aria-label="main navigation">
@@ -160,14 +157,6 @@ function Header() {
                 </div>
               </div>
             )}
-            {/* 深色模式切换按钮 */}
-            <div className="navbar-item">
-              <button className="button is-light is-small" onClick={toggleDarkMode}>
-                <span className="icon">
-                  <i className={`fas ${darkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-                </span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
