@@ -155,7 +155,7 @@ function MomentList() {
             grid-column: 2;
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 1.5rem;
             justify-content: flex-start;
             align-items: center;
           }
@@ -172,7 +172,11 @@ function MomentList() {
           .moment-meta-right {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1.5rem;
+          }
+          /* 关键修复：缩小左侧日期图标的间距 */
+          .moment-meta-left {
+            gap: 2px;
           }
         }
       `}</style>
@@ -198,8 +202,8 @@ function MomentList() {
                   <div className="level-left">
                     {/* 左侧列：发布时间 */}
                     <div className="moment-meta-left">
-                      <i className="fa-regular fa-calendar"></i>
-                      <span className="ml-1 mr-2">{item.date}</span>
+                      <i className="fa-regular fa-calendar" style={{ marginRight: '2px' }}></i>
+                      <span style={{ marginRight: '2px' }}>{item.date}</span>
                     </div>
                     {/* 右侧列：点赞、评论、字数 */}
                     <div className="moment-meta-right">
