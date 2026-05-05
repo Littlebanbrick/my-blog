@@ -211,7 +211,7 @@ function PostPage() {
                   <span className="has-text-grey is-size-7"> reply to <strong>{c.parent_author}</strong></span>
                 )}
                 <small className="has-text-grey ml-2">{c.created_at}</small>
-                <p className="mt-1">{c.content}</p>
+                <p className="mt-1" style={{ whiteSpace: 'pre-line' }}>{c.content}</p>
               </div>
               {isLoggedIn && (
                 <button
