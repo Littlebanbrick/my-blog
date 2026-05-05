@@ -901,10 +901,14 @@ async def list_notes():
             with open(path, 'r', encoding='utf-8') as fp:
                 raw = fp.read()
             lines = raw.strip().split('\n')
-            summary = lines[0].lstrip('#').strip() if lines else ''
+            # 取第一行（# 标题）作为标题，去掉 # 和首尾空格，保留原始大小写
+            first_line = lines[0].lstrip('#').strip() if lines else ''
+            # 如果有标题行就用它，否则回退到文件名
+            title = first_line if first_line else f.replace('.md', '')
+            summary = first_line
             notes_list.append({
                 'id': f.replace('.md', ''),
-                'title': f.replace('.md', '').replace('-', ' ').title(),
+                'title': title,
                 'summary': summary,
                 'filename': f,
                 'updated_at': datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M:%S")

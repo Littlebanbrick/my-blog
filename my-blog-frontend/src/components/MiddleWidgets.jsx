@@ -228,46 +228,43 @@ function MomentList() {
                   </div>
                 )}
 
-                {/* 内联评论区 */}
-                {comments.length > 0 && (
-                  <div className="comments-inline mt-3">
-                    {displayedComments.map(comment => (
-                      <div 
-                        key={comment.id} 
-                        className="media" 
-                        style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
-                        onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
-                      >
-                        <div className="media-content">
-                          {comment.parent_author ? (
-                            <>
-                              <strong className="mr-2">{comment.author}</strong>
-                              <span className="has-text-grey is-size-7">reply to </span>
-                              <strong>{comment.parent_author}</strong>
-                              <span>: </span>
-                              <i>{comment.content}</i>
-                            </>
-                          ) : (
-                            <>
-                              <strong className="mr-2">{comment.author}:</strong>
-                              <i>{comment.content}</i>
-                            </>
-                          )}
-                        </div>
+              {/* 内联评论区 */}
+              {comments.length > 0 && (
+                <div
+                  className="comments-inline mt-3"
+                  style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                >
+                  {displayedComments.map(comment => (
+                    <div key={comment.id} className="media">
+                      <div className="media-content">
+                        {comment.parent_author ? (
+                          <>
+                            <strong className="mr-2">{comment.author}</strong>
+                            <span className="has-text-grey is-size-7">reply to </span>
+                            <strong>{comment.parent_author}</strong>
+                            <span>: </span>
+                            <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                          </>
+                        ) : (
+                          <>
+                            <strong className="mr-2">{comment.author}:</strong>
+                            <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                          </>
+                        )}
                       </div>
-                    ))}
+                    </div>
+                  ))}
 
-                    {/* Show all / Show less 按钮 */}
-                    {comments.length > 5 && (
-                      <button
-                        className="button is-text is-small mt-2"
-                        onClick={(e) => toggleShowAll(e, item.id)}
-                      >
-                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
-                      </button>
-                    )}
-                  </div>
-                )}
+                  {comments.length > 5 && (
+                    <button
+                      className="button is-text is-small mt-2"
+                      onClick={(e) => toggleShowAll(e, item.id)}
+                    >
+                      {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
+                    </button>
+                  )}
+                </div>
+              )}
               </article>
             </Link>
           )
