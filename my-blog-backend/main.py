@@ -74,6 +74,8 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+MCP_SECRET_KEY = os.getenv("MCP_SECRET_KEY", "")
+
 if not JWT_SECRET_KEY or not ADMIN_SECRET_KEY:
     raise ValueError("FATAL: SECRET KEYS MISSING. Please set JWT_SECRET_KEY and ADMIN_SECRET_KEY in the .env file.")
 
@@ -285,6 +287,27 @@ async def cleanup_unverified_users():
             )
         )
         await database.execute(delete_query)
+        
+async def _create_post(post: PostCreate):
+    """核心发帖逻辑，不依赖用户认证"""
+    if len(post.images) > 9:
+        return fail("Maximum 9 images allowed")
+    now = get_current_time()
+    query = posts.insert().values(
+        date=now,
+        title=post.title,
+        preview=post.preview,
+        location=post.location,
+        comment_count=0,
+        likes_count=0,
+        word_count=f"{count_words(post.preview)} words"
+    )
+    last_id = await database.execute(query)
+    for idx, img_url in enumerate(post.images):
+        await database.execute(
+            post_images.insert().values(post_id=last_id, url=img_url, order=idx)
+        )
+    return success(msg="Post created")
 
 @app.on_event("startup")
 async def startup():
@@ -785,30 +808,14 @@ async def delete_user(current_user: TokenData = Depends(get_current_user), _=Dep
     return response
 
 @app.post("/api/admin/posts/create")
-async def admin_create_post(post: PostCreate,
+async def admin_create_post(
+    post: PostCreate,
     current_user: TokenData = Depends(get_current_user),
     _=Depends(verify_csrf)
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403)
-    if len(post.images) > 9:
-        return fail("Maximum 9 images allowed")
-    now = get_current_time()
-    query = posts.insert().values(
-        date=now,
-        title=post.title,
-        preview=post.preview,
-        location=post.location,
-        comment_count=0,
-        likes_count=0,
-        word_count=f"{count_words(post.preview)} words"
-    )
-    last_id = await database.execute(query)
-    for idx, img_url in enumerate(post.images):
-        await database.execute(
-            post_images.insert().values(post_id=last_id, url=img_url, order=idx)
-        )
-    return success(msg="Post created")
+    return await _create_post(post)
 
 @app.delete("/api/admin/comments/{comment_id}")
 async def admin_delete_comment(
@@ -1433,6 +1440,13 @@ async def get_music_files(current_user: TokenData = Depends(get_current_user)):
         return success(data=[])
     files = [f for f in os.listdir(music_dir) if f.lower().endswith('.mp3')]
     return success(data=files)
+
+@app.post("/api/mcp/create-post")
+async def mcp_create_post(post: PostCreate, request: Request):
+    mcp_key = request.headers.get("X-MCP-Key")
+    if mcp_key != MCP_SECRET_KEY or not mcp_key:
+        raise HTTPException(status_code=403, detail="Invalid MCP key")
+    return await _create_post(post)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
