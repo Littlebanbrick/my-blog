@@ -45,10 +45,10 @@ function StudyNotesPage() {
           )}
         </div>
 
-        <div className="columns is-multiline">
+        <div className="archives-columns">
           {notes.map(note => (
-            <div key={note.id} className="column is-6-tablet is-4-desktop">
-              <div className="card" style={{ height: '100%' }}>
+            <div key={note.id} className="card-item">
+              <div className="card">
                 <div className="card-content">
                   <p className="title is-5">
                     <Link to={`/study-notes/${note.id}`}>{note.title}</Link>
