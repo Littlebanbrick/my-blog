@@ -1,13 +1,11 @@
 # my-blog-backend/database.py
-import os
+
 import databases
 import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, Text, text
-# ========== 获取数据库文件的绝对路径 ==========
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "blog.db")
 
-DATABASE_URL = f"sqlite:///{DB_PATH.replace(os.sep, '/')}"
+# Database connection URL（SQLite stored at root dir）
+DATABASE_URL = "sqlite:///./data/blog.db"
 
 # Database asynchronous connection instance
 database = databases.Database(DATABASE_URL)
@@ -71,7 +69,7 @@ users = sqlalchemy.Table(
     Column("username", String(50), unique=True, nullable=False),
     Column("email", String(100), unique=True, nullable=False),
     Column("hashed_password", String(255), nullable=False),
-    Column("role", String(50), nullable=False, default="user"),
+    Column("role", String(50), nullable=False, default="user"),  # User or admin
     Column("is_verified", Integer, default=0),
     Column("verify_token", String(255), nullable=True),
     Column("verify_token_expire", String(255), nullable=True)
