@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import os
+import asyncio
 from datetime import datetime, timezone, timedelta
 
 TZ_BEIJING = timezone(timedelta(hours=8))

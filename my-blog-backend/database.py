@@ -1,11 +1,15 @@
 # my-blog-backend/database.py
-
+import os
 import databases
 import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, Text, text
 
-# Database connection URL（SQLite stored at root dir）
-DATABASE_URL = "sqlite:///./data/blog.db"
+# ========== 获取当前文件所在目录的绝对路径 ==========
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 数据库文件将生成在 my-blog-backend 目录下，文件名为 blog.db
+DB_PATH = os.path.join(BASE_DIR, "blog.db")
+# 构造 SQLite 连接 URL（使用正斜杠，兼容 Windows）
+DATABASE_URL = f"sqlite:///{DB_PATH.replace(os.sep, '/')}"
 
 # Database asynchronous connection instance
 database = databases.Database(DATABASE_URL)

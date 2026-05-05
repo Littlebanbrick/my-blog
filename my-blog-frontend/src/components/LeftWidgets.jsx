@@ -6,10 +6,12 @@ import SongCard from './SongCard'
 import { useTheme } from '../context/ThemeContext'
 
 function ProfileCard() {
+  // 1. 所有 Hooks 必须在顶层无条件调用
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [rotation, setRotation] = useState(0)
   const [quote, setQuote] = useState({ text: 'Loading...', from: '', author: '' })
+  const { darkMode } = useTheme()   // ✅ 提前到这里
 
   useEffect(() => {
     authFetch(`/api/profile`)
@@ -60,7 +62,7 @@ function ProfileCard() {
           <ul className="menu-list">
             <li>
               <a href="https://en.wikipedia.org/wiki/Main_Page/" target="_blank" rel="noopener" className="level is-mobile">
-                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'break-word' }}>
+                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'normal' }}>
                   Wikipedia
                 </span>
                 <span className="level-right">
@@ -78,7 +80,7 @@ function ProfileCard() {
             </li>
             <li>
               <a href="http://cspo.zju.edu.cn/" target="_blank" rel="noopener" className="level is-mobile">
-                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'break-word' }}>
+                <span className="level-left mb-1" style={{ flex: 1, wordBreak: 'normal' }}>
                   ZJU CCST
                 </span>
                 <span className="level-right">
@@ -104,8 +106,7 @@ function ProfileCard() {
     return <div className="card widget"><div className="card-content">Loading profile...</div></div>;
   }
 
-  const { darkMode } = useTheme();
-
+  // 注意：darkMode 已经定义，不再需要重新获取
   return (
     <>
     <div className={loading ? '' : 'moment-slide-up'}>
