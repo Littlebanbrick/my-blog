@@ -138,7 +138,7 @@ function MomentList() {
 
   return (
     <>
-      {/* 移动端响应式样式：将元数据分为两列（时间一列，点赞/评论/字数一列） */}
+      {/* 响应式样式：移动端两列布局，桌面端保持水平且控制间距 */}
       <style>{`
         @media (max-width: 768px) {
           .article-meta .level-left {
@@ -166,7 +166,6 @@ function MomentList() {
             margin-right: 0 !important;
           }
         }
-        /* 电脑端保持原样（≥769px） */
         @media (min-width: 769px) {
           .moment-meta-left,
           .moment-meta-right {
@@ -174,7 +173,6 @@ function MomentList() {
             align-items: center;
             gap: 1.5rem;
           }
-          /* 关键修复：缩小左侧日期图标的间距 */
           .moment-meta-left {
             gap: 2px;
           }
@@ -202,8 +200,8 @@ function MomentList() {
                   <div className="level-left">
                     {/* 左侧列：发布时间 */}
                     <div className="moment-meta-left">
-                      <i className="fa-regular fa-calendar" style={{ marginRight: '2px' }}></i>
-                      <span style={{ marginRight: '2px' }}>{item.date}</span>
+                      <i className="fa-regular fa-calendar"></i>
+                      <span className="ml-1 mr-2">{item.date}</span>
                     </div>
                     {/* 右侧列：点赞、评论、字数 */}
                     <div className="moment-meta-right">
@@ -280,14 +278,16 @@ function MomentList() {
                     </div>
                   </div>
                 )}
-
+                {/* 内联评论区 */}
                 {comments.length > 0 && (
-                  <div className="comments-inline mt-3">
+                  <div
+                    className="comments-inline mt-3"
+                    style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                  >
                     {displayedComments.map((comment) => (
                       <div
                         key={comment.id}
                         className="media"
-                        style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
                         onContextMenu={(e) => handleCommentRightClick(e, comment.id)}
                       >
                         <div className="media-content">
@@ -297,12 +297,12 @@ function MomentList() {
                               <span className="has-text-grey is-size-7">reply to </span>
                               <strong>{comment.parent_author}</strong>
                               <span>: </span>
-                              <i>{comment.content}</i>
+                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
                             </>
                           ) : (
                             <>
                               <strong className="mr-2">{comment.author}:</strong>
-                              <i>{comment.content}</i>
+                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
                             </>
                           )}
                         </div>

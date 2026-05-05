@@ -3,12 +3,10 @@ import os
 import databases
 import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, Text, text
-
-# ========== 获取当前文件所在目录的绝对路径 ==========
+# ========== 获取数据库文件的绝对路径 ==========
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 数据库文件将生成在 my-blog-backend 目录下，文件名为 blog.db
 DB_PATH = os.path.join(BASE_DIR, "blog.db")
-# 构造 SQLite 连接 URL（使用正斜杠，兼容 Windows）
+
 DATABASE_URL = f"sqlite:///{DB_PATH.replace(os.sep, '/')}"
 
 # Database asynchronous connection instance
@@ -73,7 +71,7 @@ users = sqlalchemy.Table(
     Column("username", String(50), unique=True, nullable=False),
     Column("email", String(100), unique=True, nullable=False),
     Column("hashed_password", String(255), nullable=False),
-    Column("role", String(50), nullable=False, default="user"),  # User or admin
+    Column("role", String(50), nullable=False, default="user"),
     Column("is_verified", Integer, default=0),
     Column("verify_token", String(255), nullable=True),
     Column("verify_token_expire", String(255), nullable=True)
