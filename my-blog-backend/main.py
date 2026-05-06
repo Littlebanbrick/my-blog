@@ -891,6 +891,8 @@ async def delete_photo(
     
 @app.get("/api/notes")
 async def list_notes():
+    beijing_tz = timezone(timedelta(hours=8))
+    
     if not os.path.exists(NOTES_DIR):
         return success(data=[])
     files = os.listdir(NOTES_DIR)
@@ -911,7 +913,7 @@ async def list_notes():
                 'title': title,
                 'summary': summary,
                 'filename': f,
-                'updated_at': datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M:%S")
+                'updated_at': datetime.fromtimestamp(os.path.getmtime(path), tz=beijing_tz).strftime("%Y-%m-%d %H:%M:%S")
             })
     notes_list.sort(key=lambda x: x['updated_at'], reverse=True)
     return success(data=notes_list)
