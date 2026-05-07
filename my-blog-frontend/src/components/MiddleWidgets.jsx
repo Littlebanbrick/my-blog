@@ -18,9 +18,7 @@ function MomentList() {
     e.preventDefault();
     const userRes = await getCurrentUser();
     if (userRes.data?.role !== 'admin') return;
-
     if (!window.confirm('Confirm to delete this post?')) return;
-
     try {
       await authFetch(`/api/admin/posts/${postId}`, {
         method: 'DELETE',
@@ -38,9 +36,7 @@ function MomentList() {
     e.stopPropagation();
     const userRes = await getCurrentUser();
     if (userRes.data?.role !== 'admin') return;
-
     if (!window.confirm('Confirm to delete this comment?')) return;
-
     try {
       await authFetch(`/api/admin/comments/${commentId}`, {
         method: 'DELETE',
@@ -91,7 +87,6 @@ function MomentList() {
   const handleLike = async (e, postId) => {
     e.stopPropagation();
     e.preventDefault();
-
     if (isLiking) return;
 
     const userRes = await getCurrentUser();
@@ -135,6 +130,49 @@ function MomentList() {
 
   return (
     <>
+      {/* 移动端响应式样式：时间一行，点赞/评论/字数下一行 */}
+      <style>{`
+        @media (max-width: 768px) {
+          .moment-meta-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+          .moment-time-row {
+            white-space: nowrap;
+          }
+          .moment-stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+          }
+          /* 移除原有的 margin 干扰 */
+          .moment-stats-row span,
+          .moment-stats-row .icon-text,
+          .moment-stats-row .commentCountImg,
+          .moment-stats-row .level-item {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+        }
+        /* 桌面端保持原有水平布局（不换行） */
+        @media (min-width: 769px) {
+          .moment-meta-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+          }
+          .moment-time-row,
+          .moment-stats-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+        }
+      `}</style>
+
       <div className={loading ? '' : 'moment-slide-up'}>
         {moments.map((item) => {
           const isLiked = likedMap[item.id] || false
@@ -154,28 +192,34 @@ function MomentList() {
               <article className="card-content article" role="article">
                 <div className="article-meta size-small is-uppercase level is-mobile">
                   <div className="level-left">
-                    <i className="fa-regular fa-calendar"></i>
-                    <span className="ml-1 mr-2">{item.date}</span>
+                    {/* 使用包装器实现移动端上下布局 */}
+                    <div className="moment-meta-wrapper">
+                      <div className="moment-time-row">
+                        <i className="fa-regular fa-calendar"></i>
+                        <span className="ml-1 mr-2">{item.date}</span>
+                      </div>
+                      <div className="moment-stats-row">
+                        <span
+                          className="icon-text is-align-items-center"
+                          style={{ cursor: 'pointer' }}
+                          onClick={(e) => handleLike(e, item.id)}
+                        >
+                          <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
+                            style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
+                          <span className="ml-1">{item.likes_count ?? 0}</span>
+                        </span>
 
-                    <span
-                      className="icon-text is-align-items-center"
-                      style={{ cursor: 'pointer' }}
-                      onClick={(e) => handleLike(e, item.id)}
-                    >
-                      <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
-                        style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
-                      <span className="ml-1">{item.likes_count ?? 0}</span>
-                    </span>
+                        <span className="commentCountImg">
+                          <i className="fa-regular fa-comment-dots"></i>
+                          <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
+                        </span>
 
-                    <span className="commentCountImg ml-3">
-                      <i className="fa-regular fa-comment-dots"></i>
-                      <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
-                    </span>
-
-                    <span className="level-item ml-3">
-                      <i className="fas fa-pencil-alt"></i>
-                      <span className="ml-1">{item.word_count ?? 0}</span>
-                    </span>
+                        <span className="level-item">
+                          <i className="fas fa-pencil-alt"></i>
+                          <span className="ml-1">{item.word_count ?? 0}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -228,43 +272,42 @@ function MomentList() {
                   </div>
                 )}
 
-              {/* 内联评论区 */}
-              {comments.length > 0 && (
-                <div
-                  className="comments-inline mt-3"
-                  style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
-                >
-                  {displayedComments.map(comment => (
-                    <div key={comment.id} className="media">
-                      <div className="media-content">
-                        {comment.parent_author ? (
-                          <>
-                            <strong className="mr-2">{comment.author}</strong>
-                            <span className="has-text-grey is-size-7">reply to </span>
-                            <strong>{comment.parent_author}</strong>
-                            <span>: </span>
-                            <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
-                          </>
-                        ) : (
-                          <>
-                            <strong className="mr-2">{comment.author}:</strong>
-                            <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
-                          </>
-                        )}
+                {/* 内联评论区 */}
+                {comments.length > 0 && (
+                  <div
+                    className="comments-inline mt-3"
+                    style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                  >
+                    {displayedComments.map(comment => (
+                      <div key={comment.id} className="media">
+                        <div className="media-content">
+                          {comment.parent_author ? (
+                            <>
+                              <strong className="mr-2">{comment.author}</strong>
+                              <span className="has-text-grey is-size-7">reply to </span>
+                              <strong>{comment.parent_author}</strong>
+                              <span>: </span>
+                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                            </>
+                          ) : (
+                            <>
+                              <strong className="mr-2">{comment.author}:</strong>
+                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-
-                  {comments.length > 5 && (
-                    <button
-                      className="button is-text is-small mt-2"
-                      onClick={(e) => toggleShowAll(e, item.id)}
-                    >
-                      {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
-                    </button>
-                  )}
-                </div>
-              )}
+                    ))}
+                    {comments.length > 5 && (
+                      <button
+                        className="button is-text is-small mt-2"
+                        onClick={(e) => toggleShowAll(e, item.id)}
+                      >
+                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
+                      </button>
+                    )}
+                  </div>
+                )}
               </article>
             </Link>
           )
