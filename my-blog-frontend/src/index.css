@@ -420,7 +420,18 @@ html.dark-mode .footer {
   color: #363636;   /* Bulma 标准深色 */
 }
 
-/* 标题和一般文字 */
+/* 确保浅色模式下标题为深色 */
+html:not(.dark-mode) .title,
+html:not(.dark-mode) .subtitle,
+html:not(.dark-mode) h1,
+html:not(.dark-mode) h2,
+html:not(.dark-mode) h3,
+html:not(.dark-mode) h4,
+html:not(.dark-mode) h5,
+html:not(.dark-mode) h6 {
+  color: #363636 !important;
+}
+
 html.dark-mode .title,
 html.dark-mode .subtitle,
 html.dark-mode h1, h2, h3, h4, h5, h6 {
