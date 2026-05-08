@@ -70,19 +70,19 @@ function AboutPage() {
                 lineHeight: '2.5rem'
               }}
             >
-              <p>
+              <p className='has-text-white'>
                 {typed1}
                 {activeLine === 1 && showCursor && (
                   <span className="is-blinking" style={{ animation: 'blink 1s step-end infinite' }}>|</span>
                 )}
               </p>
-              <p>
+              <p className='has-text-white'>
                 {typed2}
                 {activeLine === 2 && showCursor && (
                   <span className="is-blinking" style={{ animation: 'blink 1s step-end infinite' }}>|</span>
                 )}
               </p>
-              <p>
+              <p className='has-text-white'>
                 {typed3}
                 {activeLine === 3 && showCursor && (
                   <span className="is-blinking" style={{ animation: 'blink 1s step-end infinite' }}>|</span>
