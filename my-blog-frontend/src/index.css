@@ -417,10 +417,14 @@ html.dark-mode .footer {
 
 html.dark-mode .title,
 html.dark-mode .subtitle,
-html.dark-mode h1, h2, h3, h4, h5, h6 {
+html.dark-mode h1,
+html.dark-mode h2,
+html.dark-mode h3,
+html.dark-mode h4,
+html.dark-mode h5,
+html.dark-mode h6 {
   color: #eee !important;
 }
-
 /* 链接颜色（全局） */
 html.dark-mode a {
   color: #ddd !important;
