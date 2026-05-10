@@ -42,7 +42,7 @@ from PIL import Image
 THUMB_MAX_WIDTH = 600          # 缩略图最大宽度
 THUMB_QUALITY = 75             # JPEG 质量
 
-from github_trending import trending_scheduler, update_trending_post
+from github_trending import trending_scheduler, update_trending_post, process_deepseek_reply, process_deepseek_context_reply
 
 app = FastAPI()
 
@@ -532,14 +532,20 @@ async def add_comment(
     # 异步启动后台任务，不阻塞当前响应
     post_row = await database.fetch_one(posts.select().where(posts.c.id == post_id))
     if post_row and post_row["title"] == "🤖 GitHub Trending Today":
-        if req.content.strip().lower().startswith("@deepseek"):
-            # 启动后台任务处理 AI 回复
-            from github_trending import process_deepseek_reply
+        content_lower = req.content.strip().lower()
+        if content_lower.startswith("@deepseek-context"):
+            asyncio.create_task(process_deepseek_context_reply(
+                post_id=post_id,
+                parent_comment_id=user_comment_id,
+                user_question=req.content,
+                asker_name=author
+            ))
+        elif content_lower.startswith("@deepseek"):
             asyncio.create_task(process_deepseek_reply(
                 post_id=post_id,
                 parent_comment_id=user_comment_id,
                 user_question=req.content,
-                asker_name=author   # 传递提问者用户名，回复时标注
+                asker_name=author
             ))
     
     return success(msg="Comment added")
@@ -692,6 +698,7 @@ async def login(user: UserLogin, response: Response, request: Request):
             httponly=False,
             secure=secure_flag,
             samesite="Lax",
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
             path="/"
         )
 
@@ -743,6 +750,7 @@ async def admin_login(admin: AdminLogin, response: Response):
             httponly=False,
             secure=secure_flag,
             samesite="Lax",
+            max_age=60 * 60 * 10,
             path="/"
         )
 
@@ -1216,7 +1224,9 @@ async def unread_count(current_user: TokenData = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     count = await database.fetch_val(
-        select(func.count()).select_from(messages).where(messages.c.is_read == 0)
+        select(func.count()).select_from(messages).where(
+            and_(messages.c.is_read == 0, messages.c.sender_username != current_user.username)
+        )
     )
     return success(data={"unread": count})
 

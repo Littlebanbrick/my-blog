@@ -110,10 +110,31 @@ async def update_trending_post():
     """每日午夜执行：删除旧 GTT 帖子 → 抓取 → 去重 → 生成新帖 → 记录仓库 → 清理旧记录"""
     from main import database, posts, get_current_time
 
-    # 1. 删除所有旧 Trending 帖子（确保永远只有一篇）
-    await database.execute(
-        posts.delete().where(posts.c.title == "🤖 GitHub Trending Today")
+    # 1. 级联删除所有旧 GTT 帖子及其关联数据
+    old_rows = await database.fetch_all(
+        posts.select().where(posts.c.title == "🤖 GitHub Trending Today")
     )
+    for row in old_rows:
+        post_id = row["id"]
+        # 删除帖子图片文件
+        image_records = await database.fetch_all(
+            post_images.select().where(post_images.c.post_id == post_id)
+        )
+        for img in image_records:
+            url = img["url"]
+            relative = url.lstrip("/")
+            file_path = os.path.join("/app", relative)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted image file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting {file_path}: {e}")
+        # 删除数据库记录
+        await database.execute(post_images.delete().where(post_images.c.post_id == post_id))
+        await database.execute(likes.delete().where(likes.c.post_id == post_id))
+        await database.execute(comments.delete().where(comments.c.post_id == post_id))
+        await database.execute(posts.delete().where(posts.c.id == post_id))
 
     # 2. 抓取当前 Top 仓库
     all_repos = fetch_github_trending()
@@ -197,8 +218,8 @@ async def clean_old_repos(days=3):
         recent_repos.delete().where(recent_repos.c.date < cutoff)
     )
 
-def _ask_deepseek_sync(question: str) -> str:
-    """同步调用 DeepSeek，返回回答文本"""
+def _ask_deepseek_sync(prompt: str, system_msg: str = "You are a helpful assistant.", 
+                       max_tokens: int = 2000, timeout: int = 120) -> str:
     if not DEEPSEEK_API_KEY:
         return "DeepSeek API key is not configured."
     headers = {
@@ -208,18 +229,18 @@ def _ask_deepseek_sync(question: str) -> str:
     payload = {
         "model": "deepseek-v4-flash",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant answering questions about GitHub trending repos. Keep answers concise and informative."},
-            {"role": "user", "content": question}
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt}
         ],
         "temperature": 0.7,
-        "max_tokens": 1000
+        "max_tokens": max_tokens
     }
     try:
         resp = requests.post(
             f"{DEEPSEEK_BASE_URL}/chat/completions",
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=timeout
         )
         if resp.status_code == 200:
             return resp.json()["choices"][0]["message"]["content"]
@@ -232,31 +253,30 @@ async def ask_deepseek(question: str) -> str:
     """异步调用 DeepSeek，通过线程池执行同步请求"""
     return await asyncio.to_thread(_ask_deepseek_sync, question)
 
+# 无上下文版本
 async def process_deepseek_reply(post_id: int, parent_comment_id: int, user_question: str, asker_name: str):
-    """后台任务：生成 AI 回复并插入数据库，作为对问题的回答"""
     from main import database, posts, comments, get_current_time
     try:
-        # 提取真正的问题（去掉 @deepseek 前缀）
         question = user_question[len("@deepseek"):].strip()
         if not question:
             return
-
-        # 调用 DeepSeek
-        answer = await ask_deepseek(question)
-
-        # 插入回复
+        answer = await asyncio.to_thread(
+            _ask_deepseek_sync,
+            prompt=question,
+            system_msg="You are a helpful assistant answering questions about GitHub trending repositories. Keep answers concise.",
+            max_tokens=2000,
+            timeout=120
+        )
         now = get_current_time()
         insert_query = comments.insert().values(
             post_id=post_id,
             author="DeepSeek",
-            content=f"{answer}",
+            content=f"🤖 {answer}",
             created_at=now,
             parent_id=parent_comment_id,
             parent_author=asker_name
         )
         await database.execute(insert_query)
-
-        # 更新帖子评论计数
         await database.execute(
             posts.update().where(posts.c.id == post_id).values(
                 comment_count=posts.c.comment_count + 1
@@ -264,3 +284,45 @@ async def process_deepseek_reply(post_id: int, parent_comment_id: int, user_ques
         )
     except Exception as e:
         print(f"DeepSeek reply error: {e}")
+        
+async def process_deepseek_context_reply(post_id: int, parent_comment_id: int, user_question: str, asker_name: str):
+    from main import database, posts, comments, get_current_time
+    try:
+        question = user_question[len("@deepseek-context"):].strip()
+        if not question:
+            return
+        post = await database.fetch_one(posts.select().where(posts.c.id == post_id))
+        if not post:
+            return
+        gtt_content = post["preview"]
+        prompt = f"""You are a helpful assistant that answers questions about today's GitHub Trending repositories.
+Here is today's GitHub Trending summary for reference:
+---
+{gtt_content}
+---
+Based on the above summary, answer the user's question. Be concise and informative.
+User question: {question}"""
+        answer = await asyncio.to_thread(
+            _ask_deepseek_sync,
+            prompt=prompt,
+            system_msg="You are a helpful assistant that answers questions based on the provided GitHub Trending context.",
+            max_tokens=5000,
+            timeout=300
+        )
+        now = get_current_time()
+        insert_query = comments.insert().values(
+            post_id=post_id,
+            author="DeepSeek",
+            content=f"🤖 {answer}",
+            created_at=now,
+            parent_id=parent_comment_id,
+            parent_author=asker_name
+        )
+        await database.execute(insert_query)
+        await database.execute(
+            posts.update().where(posts.c.id == post_id).values(
+                comment_count=posts.c.comment_count + 1
+            )
+        )
+    except Exception as e:
+        print(f"DeepSeek context reply error: {e}")
