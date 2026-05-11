@@ -97,6 +97,7 @@ messages = sqlalchemy.Table(
     Column("is_read", Integer, default=0),
     Column("parent_id", Integer, nullable=True),
     Column("root_id", Integer, nullable=True),
+    Column("quoted_id", Integer, nullable=False),
 )
 
 # ========== Table of song configs  ==========
@@ -188,6 +189,9 @@ def fix_missing_columns():
                 
             if not column_exists("messages", "root_id"):
                 conn.execute(text("ALTER TABLE messages ADD COLUMN root_id INTEGER"))
+                            
+            if not column_exists("messages", "quoted_id"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN quoted_id INTEGER"))
                 
             if not column_exists("recent_repos", "id"):
                 conn.execute(text("ALTER TABLE recent_repos ADD COLUMN id INTEGER"))

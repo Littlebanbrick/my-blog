@@ -121,9 +121,11 @@ class NoteUpdate(BaseModel):
 class MessageCreate(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
     anonymous: bool = Body(False)
+    quoted_id: int | None = Body(None)
     
 class MessageReply(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
+    quoted_id: int | None = Body(None)
 
 class SongUpdate(BaseModel):
     title: str = Body("")
@@ -1143,6 +1145,7 @@ async def send_message(
         sender_username=sender,
         content=req.content,
         created_at=now,
+        quoted_id=req.quoted_id,
         is_read=0
     )
     await database.execute(query)
@@ -1279,7 +1282,8 @@ async def reply_message(
         created_at=now,
         is_read=0,
         parent_id=message_id,
-        root_id=root_id
+        root_id=root_id,
+        quoted_id=req.quoted_id
     )
     await database.execute(query)
     
@@ -1314,22 +1318,45 @@ async def user_reply(
         created_at=now,
         is_read=0,
         parent_id=message_id,
-        root_id=root_id
+        root_id=root_id,
+        quoted_id=req.quoted_id
     )
     await database.execute(query)
     return success(msg="Reply sent")
 
 @app.get("/api/admin/messages/{root_id}/conversation")
-async def get_conversation(
+async def admin_get_conversation(
     root_id: int,
-    current_user: TokenData = Depends(get_current_user)):
+    current_user: TokenData = Depends(get_current_user),
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    
     query = messages.select().where(
         or_(messages.c.id == root_id, messages.c.root_id == root_id)
     ).order_by(messages.c.created_at.asc())
     rows = await database.fetch_all(query)
-    return success(data=[dict(row) for row in rows])
+    msgs = [dict(row) for row in rows]
+
+    # 收集所有被引用的消息 ID
+    quoted_ids = set()
+    for m in msgs:
+        if m.get("quoted_id"):
+            quoted_ids.add(m["quoted_id"])
+    
+    # 批量查询被引用消息的内容
+    quoted_content_map = {}
+    if quoted_ids:
+        quoted_rows = await database.fetch_all(
+            messages.select().where(messages.c.id.in_(quoted_ids))
+        )
+        quoted_content_map = {r["id"]: r["content"] for r in quoted_rows}
+    
+    # 附加 quoted_content 字段
+    for m in msgs:
+        m["quoted_content"] = quoted_content_map.get(m.get("quoted_id"), "") if m.get("quoted_id") else ""
+    
+    return success(data=msgs)
 
 # For the users. Relevant msgs only.
 @app.get("/api/messages/my")
@@ -1364,7 +1391,6 @@ async def get_conversation(
     root = await database.fetch_one(messages.select().where(messages.c.id == root_id))
     if not root:
         return fail(msg="Conversation not found", code=404)
-    # 权限检查：管理员可看所有，用户只能看自己参与的
     if current_user.role != "admin" and current_user.username != root["sender_username"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
@@ -1372,7 +1398,27 @@ async def get_conversation(
         or_(messages.c.id == root_id, messages.c.root_id == root_id)
     ).order_by(messages.c.created_at.asc())
     rows = await database.fetch_all(query)
-    return success(data=[dict(row) for row in rows])
+    msgs = [dict(row) for row in rows]
+
+    # 收集所有被引用的消息 ID
+    quoted_ids = set()
+    for m in msgs:
+        if m.get("quoted_id"):
+            quoted_ids.add(m["quoted_id"])
+    
+    # 批量查询被引用消息的内容
+    quoted_content_map = {}
+    if quoted_ids:
+        quoted_rows = await database.fetch_all(
+            messages.select().where(messages.c.id.in_(quoted_ids))
+        )
+        quoted_content_map = {r["id"]: r["content"] for r in quoted_rows}
+    
+    # 附加 quoted_content 字段
+    for m in msgs:
+        m["quoted_content"] = quoted_content_map.get(m.get("quoted_id"), "") if m.get("quoted_id") else ""
+    
+    return success(data=msgs)
 
 @app.delete("/api/admin/messages/{message_id}")
 async def delete_message(message_id: int, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):

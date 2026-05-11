@@ -2,13 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { authFetch } from '../utils';
 
-const ADMIN_NAME = '小BAN砖'
+const ADMIN_NAME = '小BAN砖';
 
 function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [activeRootId, setActiveRootId] = useState(null);
   const [conversation, setConversation] = useState([]);
   const [replyText, setReplyText] = useState('');
+  const [quoteMsg, setQuoteMsg] = useState(null); // 引用消息
   const messagesEndRef = useRef(null);
 
   const fetchMessages = async () => {
@@ -41,7 +42,8 @@ function MessagesPage() {
     setMessages(prev =>
       prev.map(m => m.id === msg.id ? { ...m, is_read: 1, unread_replies: 0 } : m)
     );
-    window.refreshUnread && window.refreshUnread();     // 主动刷新Header
+    window.refreshUnread && window.refreshUnread();
+    setQuoteMsg(null); // 切换对话时取消引用
   };
 
   const handleAdminReply = async () => {
@@ -50,11 +52,12 @@ function MessagesPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ content: replyText })
+      body: JSON.stringify({ content: replyText, quoted_id: quoteMsg?.id || null })
     });
     setReplyText('');
+    setQuoteMsg(null);
     loadConversation(activeRootId);
-    window.refreshUnread && window.refreshUnread();     // 主动刷新Header
+    window.refreshUnread && window.refreshUnread();
   };
 
   const handleDeleteMessage = async (e, msgId) => {
@@ -69,7 +72,6 @@ function MessagesPage() {
     fetchMessages();
   };
 
-  // Automatically find the buttom of the conversation
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation]);
@@ -119,6 +121,14 @@ function MessagesPage() {
                       key={msg.id}
                       className="mb-3"
                       style={{ textAlign: msg.sender_username === ADMIN_NAME ? 'right' : 'left' }}
+                      onContextMenu={(e) => {
+                          e.preventDefault();
+                          if (quoteMsg && quoteMsg.id === msg.id) {
+                              setQuoteMsg(null);   // 取消引用
+                          } else {
+                              setQuoteMsg({ id: msg.id, content: msg.content });
+                          }
+                      }}
                     >
                       <div
                         style={{
@@ -132,6 +142,15 @@ function MessagesPage() {
                         }}
                       >
                         <p className="is-size-7 has-text-weight-bold">{msg.sender_username}</p>
+                        {msg.quoted_content && (
+                          <div style={{ marginBottom: '6px', borderTop: '1px solid #ccc', paddingTop: '4px' }}>
+                            <p className="is-size-7 has-text-grey" style={{ fontStyle: 'italic' }}>
+                              {msg.quoted_content?.length > 100 
+                                ? msg.quoted_content.substring(0, 100) + '...' 
+                                : msg.quoted_content}
+                            </p>
+                          </div>
+                        )}
                         <p>{msg.content}</p>
                         <p className="is-size-7" style={{ opacity: 0.8 }}>{msg.created_at}</p>
                       </div>
@@ -139,12 +158,19 @@ function MessagesPage() {
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
+                {/* 引用提示 */}
+                {quoteMsg && (
+                  <div className="notification is-light is-info is-small" style={{ padding: '0.5rem 1rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Replying to: <em>{quoteMsg.content?.substring(0, 60)}{quoteMsg.content?.length > 60 ? '...' : ''}</em></span>
+                    <button className="delete is-small" onClick={() => setQuoteMsg(null)}></button>
+                  </div>
+                )}
                 <div className="field has-addons mt-2">
                   <div className="control is-expanded">
                     <input
                       className="input"
                       type="text"
-                      placeholder="Reply..."
+                      placeholder={quoteMsg ? 'Reply with quote...' : 'Reply...'}
                       value={replyText}
                       onChange={e => setReplyText(e.target.value)}
                       onKeyPress={e => e.key === 'Enter' && handleAdminReply()}
