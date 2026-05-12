@@ -9,14 +9,14 @@ function Footer() {
               &copy; {new Date().getFullYear()} Johnny Wang. Powered by React &amp; Bulma.
               <br />
               All content licensed under CC BY-NC-SA 4.0.
-              <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
-                赣ICP备2026009701号
-              </a>
             </p>
           </div>
           <div className="level-right">
             <a className="button is-small is-text" href="https://github.com/Littlebanbrick/my-blog" target="_blank" rel="noopener noreferrer">
               <i className="fab fa-github mr-1"></i> Source Code
+            </a>
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
+              赣ICP备2026009701号
             </a>
           </div>
         </div>
