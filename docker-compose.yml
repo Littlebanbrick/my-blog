@@ -13,7 +13,7 @@ services:
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
       - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_AUTH_CODE=${SENDER_AUTH_CODE}
-      - ENV=development   # 到时候记得改回来！！！！！！！！！
+      - ENV=production
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - MCP_SECRET_KEY=${MCP_SECRET_KEY}
     dns:
