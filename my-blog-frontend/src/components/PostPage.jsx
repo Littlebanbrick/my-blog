@@ -126,7 +126,7 @@ function PostPage() {
         <div className="container">
           <div className="level is-mobile mb-3">
             <div className="level-left">
-              <h1 className="title is-2 mb-0">{post.title}</h1>
+              <h1 className="title is-2 mb-0" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>{post.title}</h1>
             </div>
             <div className="level-right">
               <span className="icon-text" style={{ cursor: 'pointer' }} onClick={handleLike}>
@@ -143,7 +143,7 @@ function PostPage() {
 
           <div
             className="content"
-            style={{ lineHeight: 2, fontSize: '1.1rem' }}
+            style={{ lineHeight: 2, fontSize: '1.1rem', overflowWrap: 'break-word', wordBreak: 'break-word', overflowX: 'hidden' }}
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize((post.preview || "").replace(/\n/g, '<br>'))
             }}
@@ -157,7 +157,7 @@ function PostPage() {
                   <img
                     src={getImageUrl(getThumbUrl(validImages[0]))}
                     alt="post image"
-                    style={{ maxHeight: '400px', objectFit: 'contain' }}
+                    style={{ maxHeight: '400px', maxWidth: '100%', objectFit: 'contain' }}
                     loading="lazy"
                   />
                 </figure>
@@ -183,7 +183,7 @@ function PostPage() {
           {/* Like list */}
           {likesUsers.length > 0 && (
             <div className="mt-3">
-              <small className="has-text-grey">Liked by: {likesUsers.map(u => u.user_name).join(', ')}</small>
+              <small className="has-text-grey" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>Liked by: {likesUsers.map(u => u.user_name).join(', ')}</small>
             </div>
           )}
 
@@ -194,7 +194,7 @@ function PostPage() {
               key={c.id}
               className="box"
               style={{
-                marginLeft: c.parent_id ? '2rem' : '0',
+                marginLeft: c.parent_id ? 'min(2rem, 5vw)' : '0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -207,13 +207,13 @@ function PostPage() {
                 });
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <strong>{c.author}</strong>
                 {c.parent_author && (
                   <span className="has-text-grey is-size-7"> reply to <strong>{c.parent_author}</strong></span>
                 )}
                 <small className="has-text-grey ml-2">{c.created_at}</small>
-                <p className="mt-1" style={{ whiteSpace: 'pre-line' }}>{c.content}</p>
+                <p className="mt-1" style={{ whiteSpace: 'pre-line', overflowWrap: 'break-word', wordBreak: 'break-word' }}>{c.content}</p>
               </div>
               {isLoggedIn && (
                 <button

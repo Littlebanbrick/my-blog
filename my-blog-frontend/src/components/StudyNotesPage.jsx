@@ -33,6 +33,14 @@ function StudyNotesPage() {
 
   return (
     <section className="section has-navbar-fixed-top">
+      <style>{`
+        @media (max-width: 1023px) {
+          .archives-columns {
+            column-count: 1 !important;
+          }
+        }
+      `}
+      </style>
       <div className="container">
         <div className="level">
           <div className="level-left">

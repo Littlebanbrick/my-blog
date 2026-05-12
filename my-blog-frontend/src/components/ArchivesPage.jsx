@@ -44,6 +44,18 @@ function ArchivesPage() {
 
   return (
     <section className="section has-navbar-fixed-top">
+      <style>{`
+        @media (max-width: 1023px) {
+          .archives-columns {
+            column-count: 1 !important;
+          }
+          .archive-preview-text,
+          .archive-images {
+            display: none !important;
+          }
+        }
+      `}
+      </style>
       <div className="container">
         <div className="level">
           <div className="level-left">
@@ -74,10 +86,10 @@ function ArchivesPage() {
                   <div className="card-content">
                     <p className="title is-5">{post.title}</p>
                     <p className="subtitle is-6 has-text-grey">{post.date}</p>
-                    <p style={{ whiteSpace: 'pre-line' }}>{post.preview}</p>
+                    <p className="archive-preview-text" style={{ whiteSpace: 'pre-line' }}>{post.preview}</p>
 
                     {validImages.length > 0 && (
-                      <div className="columns is-multiline is-mobile mt-2">
+                      <div className="archive-images columns is-multiline is-mobile mt-2">
                         {validImages.length === 1 ? (
                           <div className="column is-12">
                             <figure>
