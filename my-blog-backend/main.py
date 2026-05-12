@@ -431,6 +431,7 @@ async def get_likes(post_id: int):
 @app.post("/api/posts/{post_id}/like")
 @limiter.limit("20/minute")
 async def toggle_like(
+    request: Request,
     post_id: int,
     current_user: TokenData = Depends(get_current_user),
     _=Depends(verify_csrf)
