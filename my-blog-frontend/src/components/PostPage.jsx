@@ -125,7 +125,7 @@ function PostPage() {
       <section className="section has-navbar-fixed-top">
         <div className="container">
           <div className="level is-mobile mb-3">
-            <div className="level-left">
+            <div className="level-left" style={{ flexShrink: 1, minWidth: 0 }}>
               <h1 className="title is-2 mb-0" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>{post.title}</h1>
             </div>
             <div className="level-right">
