@@ -40,8 +40,8 @@ function NotePage() {
             </div>
           )}
         </div>
-        <div 
-          className="content markdown-body"
+        <div
+          className="content markdown-body note-body"
           style={{
             maxWidth: '85%',
             marginLeft: 'auto',
@@ -51,7 +51,7 @@ function NotePage() {
             borderRadius: '6px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
           }}
-        >          
+        >
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
@@ -60,6 +60,19 @@ function NotePage() {
           </ReactMarkdown>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .note-body {
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding: 1rem 1rem !important;
+            border-radius: 0 !important;        /* 去圆角，更贴近边缘 */
+            box-shadow: none !important;         /* 去除阴影，减少视觉干扰 */
+          }
+        }
+      `}</style>
     </section>
   );
 }
