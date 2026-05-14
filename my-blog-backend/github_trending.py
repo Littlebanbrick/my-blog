@@ -263,7 +263,7 @@ async def process_deepseek_reply(post_id: int, parent_comment_id: int, user_ques
         answer = await asyncio.to_thread(
             _ask_deepseek_sync,
             prompt=question,
-            system_msg="You are a helpful assistant answering questions about GitHub trending repositories. Keep answers concise.",
+            system_msg="You are a helpful assistant answering questions about GitHub trending repositories. Keep answers concise. No markdown format should be used.",
             max_tokens=2000,
             timeout=120
         )
@@ -305,7 +305,7 @@ User question: {question}"""
         answer = await asyncio.to_thread(
             _ask_deepseek_sync,
             prompt=prompt,
-            system_msg="You are a helpful assistant that answers questions based on the provided GitHub Trending context.",
+            system_msg="You are a helpful assistant that answers questions based on the provided GitHub Trending context. No markdown format should be used.",
             max_tokens=5000,
             timeout=300
         )
