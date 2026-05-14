@@ -803,7 +803,7 @@ async def admin_login(request: Request, admin: AdminLogin, response: Response):
 
         token = create_access_token(
             data={"sub": admin_user["username"], "role": "admin"},
-            expires_delta=timedelta(hours=1)
+            expires_delta=timedelta(hours=24 * 7)
         )
 
         secure_flag = os.getenv("ENV", "development") == "production"
@@ -814,7 +814,7 @@ async def admin_login(request: Request, admin: AdminLogin, response: Response):
             httponly=True,
             secure=secure_flag,
             samesite="Lax",
-            max_age=60 * 60 * 10,
+            max_age=60 * 60 * 24 * 7,
             path="/"
         )
 
@@ -857,9 +857,9 @@ class UsernameUpdate(BaseModel):
 
 @app.put("/api/user/username")
 async def change_username(
+    response: Response,
     req: UsernameUpdate,
     current_user: TokenData = Depends(get_current_user),
-    response: Response,
     _=Depends(verify_csrf)
 ):
     # 1. 检查新用户名合法性
@@ -1016,8 +1016,22 @@ async def delete_user(current_user: TokenData = Depends(get_current_user), _=Dep
             )
         # 删除评论记录
         await database.execute(comments.delete().where(comments.c.author == current_user.username))
+        
+        # 3. 删除该用户的所有留言会话（包括管理员回复）
+        user_roots = await database.fetch_all(
+            messages.select().where(
+                and_(
+                    messages.c.sender_username == current_user.username,
+                    messages.c.parent_id == None
+                )
+            )
+        )
+        for root in user_roots:
+            root_id = root["id"]
+            await database.execute(messages.delete().where(messages.c.root_id == root_id))
+            await database.execute(messages.delete().where(messages.c.id == root_id))
 
-        # 3. 删除用户
+        # 4. 删除用户
         await database.execute(users.delete().where(users.c.username == current_user.username))
 
     response = JSONResponse(content=success(msg="Account deleted successfully"))
