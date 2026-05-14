@@ -15,6 +15,7 @@ import shutil
 import uuid
 import time
 from dotenv import load_dotenv, find_dotenv
+from datetime import datetime, timedelta, timezone
 
 dotenv_path = find_dotenv() or '/app/.env'
 load_dotenv(dotenv_path)
@@ -850,6 +851,105 @@ async def logout(response: Response):
 async def me(current_user: TokenData = Depends(get_current_user)):
     return success(data={"username": current_user.username, "role": current_user.role})
 
+#用户更名系统
+class UsernameUpdate(BaseModel):
+    new_username: str = Body(..., min_length=3, max_length=50)
+
+@app.put("/api/user/username")
+async def change_username(
+    req: UsernameUpdate,
+    current_user: TokenData = Depends(get_current_user),
+    response: Response = None,
+    _=Depends(verify_csrf)
+):
+    # 1. 检查新用户名合法性
+    new_username = req.new_username.strip()
+    if len(new_username) < 3 or len(new_username) > 50:
+        return fail("Username must be 3-50 characters", 400)
+    if new_username.lower() in ['anonymous', 'deepseek', 'admin']:
+        return fail("This username is not allowed", 400)
+    if not re.match(r'^[a-zA-Z0-9_]+$', new_username):
+        return fail("Username can only contain letters, numbers and underscores", 400)
+
+    # 2. 检查是否已存在
+    existing = await database.fetch_one(users.select().where(users.c.username == new_username))
+    if existing:
+        return fail("Username already taken", 400)
+
+    # 3. 获取当前用户信息，检查上次修改时间
+    user_row = await database.fetch_one(users.select().where(users.c.username == current_user.username))
+    if not user_row:
+        return fail("User not found", 404)
+
+    last_change_str = user_row.get("last_username_change")
+    if last_change_str:
+        try:
+            last_change = datetime.strptime(last_change_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=8)))
+            days_since = (beijing_now() - last_change).days
+            if days_since < 30:
+                return fail(f"You can only change username once every 30 days. {30 - days_since} days remaining.", 400)
+        except:
+            pass  # 如果格式错误，当作从未修改过
+
+    # 4. 开始事务，更新所有相关表
+    now_str = get_current_time()
+    async with database.transaction():
+        # 更新 users 表
+        await database.execute(
+            users.update()
+            .where(users.c.username == current_user.username)
+            .values(username=new_username, last_username_change=now_str)
+        )
+
+        # 更新 likes 表
+        await database.execute(
+            likes.update().where(likes.c.user_name == current_user.username).values(user_name=new_username)
+        )
+        # 更新 comments 表
+        await database.execute(
+            comments.update().where(comments.c.author == current_user.username).values(author=new_username)
+        )
+        # 更新 messages 表的发送者
+        await database.execute(
+            messages.update().where(messages.c.sender_username == current_user.username).values(sender_username=new_username)
+        )
+        # 更新 deepseek_usage 表
+        await database.execute(
+            deepseek_usage.update().where(deepseek_usage.c.username == current_user.username).values(username=new_username)
+        )
+
+    # 5. 生成新的 token 和 csrf_token，替换旧 cookie
+    access_token = create_access_token(
+        data={"sub": new_username, "role": user_row["role"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    csrf_token = secrets.token_hex(32)
+    secure_flag = os.getenv("ENV", "development") == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=secure_flag,
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=secure_flag,
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+
+    return success(data={
+        "username": new_username,
+        "access_token": access_token,
+        "csrf_token": csrf_token
+    }, msg="Username updated successfully. Please refresh the page.")
 
 @app.get("/wait-verification")
 async def wait_verification():

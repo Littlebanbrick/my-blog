@@ -72,7 +72,8 @@ users = sqlalchemy.Table(
     Column("role", String(50), nullable=False, default="user"),  # User or admin
     Column("is_verified", Integer, default=0),
     Column("verify_token", String(255), nullable=True),
-    Column("verify_token_expire", String(255), nullable=True)
+    Column("verify_token_expire", String(255), nullable=True),
+    Column("last_username_change", String(255), nullable=True),   # 上次修改用户名的时间
 )
 
 # ========== Table of projects  ==========
@@ -160,6 +161,10 @@ def fix_missing_columns():
             
             if not column_exists("users", "verify_token_expire"):
                 conn.execute(text("ALTER TABLE users ADD COLUMN verify_token_expire VARCHAR(255) NULL"))
+            
+            # 新增：last_username_change 字段
+            if not column_exists("users", "last_username_change"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_username_change VARCHAR(255) NULL"))
                 
             if not column_exists("comments", "parent_id"):
                 conn.execute(text("ALTER TABLE comments ADD COLUMN parent_id INTEGER"))
