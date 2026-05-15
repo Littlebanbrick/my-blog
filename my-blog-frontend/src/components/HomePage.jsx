@@ -20,7 +20,7 @@ function HomePage() {
         /* 桌面端 sticky 侧边栏 */
         .sticky-sidebar {
           position: sticky;
-          top: 1rem;
+          top: 4.3rem;
           align-self: start;
           overflow: visible !important;
         }

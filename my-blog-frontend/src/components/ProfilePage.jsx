@@ -90,11 +90,7 @@ function ProfilePage() {
       }
     } catch (err) {
       setUsernameError("Network error, please try again");
-    } finally {
-      setChangeLoading(false);
-      setShowUsernameModal(false);
-      setNewUsername("");
-    }
+    } 
   };
 
   if (!user) return <div className="section">Loading...</div>;
@@ -174,22 +170,22 @@ function ProfilePage() {
                 </p>
               </div>
             </section>
-            <footer className="modal-card-foot">
-              <button
-                className="button is-success"
-                onClick={handleUsernameChange}
-                disabled={changeLoading}
-              >
-                {changeLoading ? "Updating..." : "Save"}
-              </button>
-              <button
-                className="button"
-                onClick={() => setShowUsernameModal(false)}
-                disabled={changeLoading}
-              >
-                Cancel
-              </button>
-            </footer>
+           <footer className="modal-card-foot">
+            <button
+              className="button is-black"
+              onClick={handleUsernameChange}
+              disabled={changeLoading}
+            >
+              {changeLoading ? "Updating..." : "Save"}
+            </button>
+            <button
+              className="button ml-2"
+              onClick={() => setShowUsernameModal(false)}
+              disabled={changeLoading}
+            >
+              Cancel
+            </button>
+          </footer>
           </div>
         </div>
       )}
