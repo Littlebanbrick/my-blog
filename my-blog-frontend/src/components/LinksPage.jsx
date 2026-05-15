@@ -26,7 +26,7 @@ function LinksPage() {
               name: "Augrottos",
               avatar: "https://avatars.githubusercontent.com/u/268848168?v=4",
               url: "https://github.com/Augrottos",
-              description: "AI researcher and indie maker",
+              description: "Elahz izob tuia suiee.",
             },
             {
               name: "Hubery",
@@ -129,7 +129,7 @@ function LinksPage() {
                     {group.description}
                   </p>
                 )}
-                <div className="columns is-multiline">
+                <div className="columns is-multiline mt-2">
                   {group.links.map((link, idx) => (
                     <div key={idx} className="column is-4">
                       <div className="card">

@@ -857,7 +857,9 @@ class UsernameUpdate(BaseModel):
     new_username: str = Body(..., min_length=3, max_length=50)
 
 @app.put("/api/user/username")
+@limiter.limit("5/day")
 async def change_username(
+    request: Request,
     response: Response,
     req: UsernameUpdate,
     current_user: TokenData = Depends(get_current_user),
@@ -973,14 +975,16 @@ async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
         return success(data={
             "username": "admin",
             "email": "admin@blog.com",
-            "role": "admin"
+            "role": "admin",
+            "last_username_change": None
         })
     user = await database.fetch_one(users.select().where(users.c.username == current_user.username))
     return success(data={
         "username": user["username"],
         "email": user["email"],
         "role": user["role"],
-        "is_verified": bool(user["is_verified"])
+        "is_verified": bool(user["is_verified"]),
+        "last_username_change": user.get("last_username_change")
     })
     
 @app.delete("/api/user/delete")

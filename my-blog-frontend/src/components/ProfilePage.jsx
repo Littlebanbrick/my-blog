@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { authFetch } from "../utils";
 
 const API_BASE = "/api";
+const COOLDOWN_DAYS = 30;
 
 function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -23,6 +24,30 @@ function ProfilePage() {
         else navigate("/login");
       });
   }, [navigate]);
+
+  // 计算冷却期信息
+  const cooldownInfo = useMemo(() => {
+    if (!user || !user.last_username_change) {
+      return { inCooldown: false, remainingDays: 0 };
+    }
+    // 服务端返回的格式: "YYYY-MM-DD HH:MM:SS" (北京时间)
+    const lastChange = new Date(user.last_username_change.replace(" ", "T") + "+08:00");
+    const now = new Date();
+    const diffDays = Math.floor((now - lastChange) / (1000 * 60 * 60 * 24));
+    const remainingDays = COOLDOWN_DAYS - diffDays;
+    return {
+      inCooldown: diffDays < COOLDOWN_DAYS,
+      remainingDays: remainingDays > 0 ? remainingDays : 0,
+    };
+  }, [user]);
+
+  // 关闭模态框并重置状态
+  const closeModal = () => {
+    if (changeLoading) return;  // 加载中不允许关闭
+    setShowUsernameModal(false);
+    setNewUsername("");
+    setUsernameError("");
+  };
 
   // Delete account handler
   const handleDeleteAccount = async () => {
@@ -59,7 +84,7 @@ function ProfilePage() {
       setUsernameError("Username can only contain letters, numbers and underscores");
       return;
     }
-    if (trimmed === user.username) {
+    if (trimmed.toLowerCase() === user.username.toLowerCase()) {
       setUsernameError("New username is the same as your current username.");
       return;
     }
@@ -95,6 +120,8 @@ function ProfilePage() {
 
   if (!user) return <div className="section">Loading...</div>;
 
+  const { inCooldown, remainingDays } = cooldownInfo;
+
   return (
     <section className="section has-navbar-fixed-top">
       <div className="container">
@@ -113,13 +140,28 @@ function ProfilePage() {
                   <strong>Role:</strong> {user.role}
                 </p>
                 <hr />
-                {/* 修改用户名按钮 */}
-                <button
-                  className="button is-fullwidth is-dark mb-3"
-                  onClick={() => setShowUsernameModal(true)}
-                >
-                  Change Username
-                </button>
+                {/* 修改用户名按钮 — 冷却期内禁用并提示剩余天数 */}
+                {inCooldown ? (
+                  <div>
+                    <button
+                      className="button is-fullwidth is-dark mb-1"
+                      disabled
+                      title={`You can change your username again in ${remainingDays} day(s)`}
+                    >
+                      Change Username
+                    </button>
+                    <p className="help has-text-centered mb-3">
+                      Available in {remainingDays} day{remainingDays !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    className="button is-fullwidth is-dark mb-3"
+                    onClick={() => setShowUsernameModal(true)}
+                  >
+                    Change Username
+                  </button>
+                )}
 
                 <button
                   className="button is-fullwidth mt-2"
@@ -139,14 +181,15 @@ function ProfilePage() {
         <div className="modal is-active">
           <div
             className="modal-background"
-            onClick={() => setShowUsernameModal(false)}
+            onClick={closeModal}
           ></div>
           <div className="modal-card">
             <header className="modal-card-head">
               <p className="modal-card-title">Change Username</p>
               <button
                 className="delete"
-                onClick={() => setShowUsernameModal(false)}
+                onClick={closeModal}
+                disabled={changeLoading}
               ></button>
             </header>
             <section className="modal-card-body">
@@ -170,22 +213,22 @@ function ProfilePage() {
                 </p>
               </div>
             </section>
-           <footer className="modal-card-foot">
-            <button
-              className="button is-dark"
-              onClick={handleUsernameChange}
-              disabled={changeLoading}
-            >
-              {changeLoading ? "Updating..." : "Save"}
-            </button>
-            <button
-              className="button ml-2"
-              onClick={() => setShowUsernameModal(false)}
-              disabled={changeLoading}
-            >
-              Cancel
-            </button>
-          </footer>
+            <footer className="modal-card-foot">
+              <button
+                className="button is-dark"
+                onClick={handleUsernameChange}
+                disabled={changeLoading}
+              >
+                {changeLoading ? "Updating..." : "Save"}
+              </button>
+              <button
+                className="button ml-2"
+                onClick={closeModal}
+                disabled={changeLoading}
+              >
+                Cancel
+              </button>
+            </footer>
           </div>
         </div>
       )}
