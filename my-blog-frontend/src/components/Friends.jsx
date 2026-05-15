@@ -33,7 +33,7 @@ function Friends() {
               </p>
             </figure>
             <div className="media-content">
-              <p className="title is-6 mb-0">
+              <p className="title is-6 mt-2 mb-0">
                 <a
                   href={friend.url}
                   target="_blank"

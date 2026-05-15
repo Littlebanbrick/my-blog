@@ -172,7 +172,7 @@ function ProfilePage() {
             </section>
            <footer className="modal-card-foot">
             <button
-              className="button is-black"
+              className="button is-dark"
               onClick={handleUsernameChange}
               disabled={changeLoading}
             >

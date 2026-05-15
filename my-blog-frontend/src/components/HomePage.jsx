@@ -17,12 +17,19 @@ function HomePage() {
           overflow: visible !important;
         }
 
-        /* 桌面端 sticky 侧边栏 */
+        /* 桌面端 sticky 侧边栏（内容过高时独立滚动，不溢出到 footer） */
         .sticky-sidebar {
-          position: sticky;
-          top: 4.3rem;
-          align-self: start;
-          overflow: visible !important;
+        position: sticky;
+        top: 1rem;
+        align-self: start;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto !important;
+        scrollbar-width: none; /* Firefox 隐藏滚动条 */
+        -ms-overflow-style: none; /* IE/Edge 隐藏滚动条 */
+        }
+        
+        .sticky-sidebar::-webkit-scrollbar {
+        display: none; /* Chrome/Safari 隐藏滚动条 */
         }
 
         /* 当屏幕宽度小于 1024px 时，彻底禁用 sticky 并让列垂直堆叠 */
