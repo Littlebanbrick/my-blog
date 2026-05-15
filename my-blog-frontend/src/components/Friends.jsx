@@ -8,6 +8,12 @@ const friends = [
     desc: "SYSU最忧郁之人",
     url: "https://github.com/Augrottos",
   },
+  {
+    name: "Hubery's notebook",
+    avatar: "https://s41.ax1x.com/2026/03/14/peEfnTx.jpg",
+    desc: "《千早爱音》的狗",
+    url: "https://hubery258.github.io/",
+  },
   // 添加更多友链...
 ];
 
