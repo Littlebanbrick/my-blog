@@ -20,7 +20,7 @@ function HomePage() {
         /* 桌面端 sticky 侧边栏（内容过高时独立滚动，不溢出到 footer） */
         .sticky-sidebar {
         position: sticky;
-        top: 1rem;
+        top: 4.3rem;
         align-self: start;
         max-height: calc(100vh - 2rem);
         overflow-y: auto !important;
