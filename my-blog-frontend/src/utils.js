@@ -1,7 +1,7 @@
 const API_BASE = "/api";
 
 function getLocalToken() {
-  return localStorage.getItem("token") || "";
+  return "";  // no longer using localStorage for token storage
 }
 
 export function getAuthHeaders() {
@@ -10,7 +10,7 @@ export function getAuthHeaders() {
   };
   const localToken = getLocalToken();
   if (localToken) {
-    headers["Authorization"] = `Bearer ${localToken}`;
+    // Authorization via httponly cookie, not localStorage
   }
   return headers;
 }
@@ -36,7 +36,7 @@ export async function registerUser(username, email, password) {
 }
 
 export function setAuthToken(token) {
-  localStorage.setItem("token", token);
+  // no-op: authentication is now cookie-only (httponly)
 }
 
 export async function toggleLike(postId) {
@@ -110,4 +110,17 @@ export function authFetch(url, options = {}) {
     headers,
     credentials: 'include',
   });
+}
+
+/*
+我们需要一个函数，根据原图路径算出缩略图路径。约定:
+原图 /photos/abc.jpg → 缩略图 /photos/thumbs/abc.jpg
+原图 /static/uploads/posts/abc.jpg → 缩略图 /static/uploads/posts/thumbs/abc.jpg
+*/
+export function getThumbUrl(url) {
+  const lastSlash = url.lastIndexOf('/');
+  if (lastSlash === -1) return url;
+  const dir = url.substring(0, lastSlash);
+  const filename = url.substring(lastSlash + 1);
+  return `${dir}/thumbs/${filename}`;
 }

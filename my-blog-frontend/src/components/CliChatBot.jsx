@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 
 const WHATIS_MAP = {
-  'this site': `This site is my personal blog, built from scratch with React, FastAPI, and SQLite. \n` +
-`It's a space where I share learning notes, project showcases, photography, and more.\n` +
-`You can find posts, archives, and a CLI chatbot like this one.`,
+  "this site":
+    `This site is my personal blog, built from scratch with React, FastAPI, and SQLite. \n` +
+    `It's a space where I share learning notes, project showcases, photography, and more.\n` +
+    `You can find posts, archives, and a CLI chatbot like this one.`,
 
-  leximind: `LexiMind is an AI-powered TOEFL English learning web app I created during Apr. 2026.\n` +
-`It uses a strict command-based prompt format to minimize token usage and deliver consistent LLM responses.\n` +
-`You can check it out at: https://github.com/Littlebanbrick/LexiMind`,
+  leximind:
+    `LexiMind is an AI-powered TOEFL English learning web app I created during Apr. 2026.\n` +
+    `It uses a strict command-based prompt format to minimize token usage and deliver consistent LLM responses.\n` +
+    `You can check it out at: https://github.com/Littlebanbrick/LexiMind`,
 };
 
 const COMMANDS = {
@@ -17,45 +19,45 @@ const COMMANDS = {
       `  help     - Show this message\n` +
       `  whoami   - Display information about the blog owner\n` +
       `  whatis   - Introduce something you would like to know\n` +
-      `  clear    - Clear the terminal screen\n`
+      `  clear    - Clear the terminal screen\n`,
   },
   whoami: {
     handler: () =>
-`Hi! It's Johnny here.\n` +
-`Keywords: Zhejiang Univ, Python, Computer Science, freshman, Photography, Minecraft, KARDS\n\n` +
-`About Me\n` +
-`I'm a freshman majoring in Computer Science at Zhejiang University. I started learning programming once I attended college and gradually developed a strong interest in building things with Python and exploring how software works under the hood.\n` +
-`I enjoy creating small but practical projects, experimenting with new ideas, and improving my problem-solving skills through hands-on development. Recently, I've been exploring broader areas in computer science and llms while building a solid technical foundation.\n\n` +
-`Hobbies\n` +
-`Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light. ` +
-`I love the scenery there in my hometown, Shenzhen (in Guangdong Province, China), which is a beautiful city with kind people around me.\n` +
-`I also spend time playing games like Minecraft and KARDS, which are two of my few favorite games.\n\n` +
-`I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.\n` +
-`Thanks to the rapid development of vibe-coding, I can finish all content of this blog site in 2 weeks.`
+      `Hi! It's Johnny here.\n` +
+      `Keywords: Zhejiang Univ, Python, Computer Science, freshman, Photography, Minecraft, KARDS\n\n` +
+      `About Me\n` +
+      `I'm a freshman majoring in Computer Science at Zhejiang University. I started learning programming once I attended college and gradually developed a strong interest in building things with Python and exploring how software works under the hood.\n` +
+      `I enjoy creating small but practical projects, experimenting with new ideas, and improving my problem-solving skills through hands-on development. Recently, I've been exploring broader areas in computer science and llms while building a solid technical foundation.\n\n` +
+      `Hobbies\n` +
+      `Outside of academics, I have a strong interest in photography, where I enjoy capturing everyday moments and experimenting with composition and light. ` +
+      `I love the scenery there in my hometown, Shenzhen (in Guangdong Province, China), which is a beautiful city with kind people around me.\n` +
+      `I also spend time playing games like Minecraft and KARDS, which are two of my few favorite games.\n\n` +
+      `I'm currently focused on learning, building, and gradually growing into a developer capable of creating meaningful and well-designed products.\n` +
+      `Thanks to the rapid development of vibe-coding, I can finish all content of this blog site in 2 weeks.`,
   },
   whatis: {
-    description: 'Get info about a specific topic. Usage: whatis <topic>',
+    description: "Get info about a specific topic. Usage: whatis <topic>",
     handler: (args) => {
       const topic = args.trim().toLowerCase();
-      if (topic === '') {
+      if (topic === "") {
         return `whatis what?\nMaybe you can try the following:\n - this site\n - leximind`;
       }
       if (WHATIS_MAP[topic]) {
         return WHATIS_MAP[topic];
       }
       return `No info found for "${topic}".`;
-    }
+    },
   },
   clear: {
-    handler: () => null   // 特殊标记，清屏
-  }
+    handler: () => null, // 特殊标记，清屏
+  },
 };
 
 function CliChatBot() {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [history, setHistory] = useState([
-    { type: 'output', text: 'Welcome to my CLI ChatBot.' },
-    { type: 'output', text: 'Type "help" for available commands.' }
+    { type: "output", text: "Welcome to my CLI ChatBot." },
+    { type: "output", text: 'Type "help" for available commands.' },
   ]);
   const [commandHistory, setCommandHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -74,20 +76,23 @@ function CliChatBot() {
 
   const handleCommand = (cmd) => {
     const trimmed = cmd.trim();
-    if (trimmed === '') return;
+    if (trimmed === "") return;
 
     // 解析命令名和参数
-    const firstSpaceIndex = trimmed.indexOf(' ');
-    const commandName = (firstSpaceIndex === -1
-      ? trimmed
-      : trimmed.substring(0, firstSpaceIndex)
+    const firstSpaceIndex = trimmed.indexOf(" ");
+    const commandName = (
+      firstSpaceIndex === -1 ? trimmed : trimmed.substring(0, firstSpaceIndex)
     ).toLowerCase();
-    const argString = firstSpaceIndex === -1 ? '' : trimmed.substring(firstSpaceIndex + 1);
+    const argString =
+      firstSpaceIndex === -1 ? "" : trimmed.substring(firstSpaceIndex + 1);
 
     // 添加到历史（输入行）
-    setCommandHistory(prev => [...prev, trimmed]);
+    setCommandHistory((prev) => [...prev, trimmed]);
     setHistoryIndex(-1);
-    setHistory(prev => [...prev, { type: 'input', text: `Littlebanbrick $ ${trimmed}` }]);
+    setHistory((prev) => [
+      ...prev,
+      { type: "input", text: `Littlebanbrick $ ${trimmed}` },
+    ]);
 
     try {
       if (COMMANDS[commandName]) {
@@ -95,17 +100,23 @@ function CliChatBot() {
         if (result === null) {
           // clear 命令
           setHistory([]);
-          setInput('');
+          setInput("");
           return;
         }
-        setHistory(prev => [...prev, { type: 'output', text: result }]);
+        setHistory((prev) => [...prev, { type: "output", text: result }]);
       } else {
-        setHistory(prev => [...prev, { type: 'output', text: `What do you mean? Ask "help" for help!` }]);
+        setHistory((prev) => [
+          ...prev,
+          { type: "output", text: `What do you mean? Ask "help" for help!` },
+        ]);
       }
     } catch (e) {
-      setHistory(prev => [...prev, { type: 'output', text: `Error: ${e.message}` }]);
+      setHistory((prev) => [
+        ...prev,
+        { type: "output", text: `Error: ${e.message}` },
+      ]);
     } finally {
-      setInput('');   // 确保输入框清空
+      setInput(""); // 确保输入框清空
     }
   };
 
@@ -115,25 +126,26 @@ function CliChatBot() {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSubmit(e);
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (commandHistory.length === 0) return;
-      let newIndex = historyIndex === -1 ? commandHistory.length - 1 : historyIndex - 1;
+      let newIndex =
+        historyIndex === -1 ? commandHistory.length - 1 : historyIndex - 1;
       if (newIndex < 0) newIndex = 0;
       setHistoryIndex(newIndex);
-      setInput(commandHistory[newIndex] || '');
-    } else if (e.key === 'ArrowDown') {
+      setInput(commandHistory[newIndex] || "");
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (historyIndex === -1) return;
       const newIndex = historyIndex + 1;
       if (newIndex >= commandHistory.length) {
         setHistoryIndex(-1);
-        setInput('');
+        setInput("");
       } else {
         setHistoryIndex(newIndex);
-        setInput(commandHistory[newIndex] || '');
+        setInput(commandHistory[newIndex] || "");
       }
     }
   };
@@ -162,7 +174,7 @@ function CliChatBot() {
           {history.map((item, idx) => (
             <div
               key={idx}
-              className={`cli-line ${item.type === 'input' ? 'cli-input-line' : 'cli-output-line'}`}
+              className={`cli-line ${item.type === "input" ? "cli-input-line" : "cli-output-line"}`}
             >
               {item.text}
             </div>
@@ -171,20 +183,20 @@ function CliChatBot() {
 
         {/* 输入行 */}
         <form className="cli-prompt" onSubmit={handleSubmit}>
-        <span className="cli-username">/littlebanbrick</span>
-        <span className="cli-separator">$</span>
-        <span className="cli-input-container">
+          <span className="cli-username">/littlebanbrick</span>
+          <span className="cli-separator">$</span>
+          <span className="cli-input-container">
             <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="cli-input"
-            autoFocus
-            spellCheck="false"
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="cli-input"
+              autoFocus
+              spellCheck="false"
             />
-        </span>
+          </span>
         </form>
       </div>
     </div>

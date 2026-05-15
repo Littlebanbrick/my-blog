@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authFetch } from '../utils';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { authFetch } from "../utils";
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 function CreatePostPage() {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [location, setLocation] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [location, setLocation] = useState("");
   const navigate = useNavigate();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -20,27 +20,30 @@ function CreatePostPage() {
       const imageUrls = [];
       for (const file of selectedFiles) {
         const formData = new FormData();
-        formData.append('file', file);
-        const uploadRes = await authFetch(`${API_BASE}/admin/upload-post-image`, {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
+        formData.append("file", file);
+        const uploadRes = await authFetch(
+          `${API_BASE}/admin/upload-post-image`,
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          },
+        );
         if (!uploadRes.ok) {
           const err = await uploadRes.json().catch(() => null);
-          throw new Error(err?.detail || err?.msg || 'Image upload failed');
+          throw new Error(err?.detail || err?.msg || "Image upload failed");
         }
         const uploadData = await uploadRes.json();
         if (uploadData.code !== 200) {
-          throw new Error(uploadData.msg || 'Image upload failed');
+          throw new Error(uploadData.msg || "Image upload failed");
         }
         imageUrls.push(uploadData.data.url);
       }
 
       const res = await authFetch(`${API_BASE}/admin/posts/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           title,
           preview: content,
@@ -51,20 +54,21 @@ function CreatePostPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        const msg = errData?.detail?.[0]?.msg || errData?.msg || `HTTP ${res.status}`;
+        const msg =
+          errData?.detail?.[0]?.msg || errData?.msg || `HTTP ${res.status}`;
         throw new Error(msg);
       }
 
       const data = await res.json();
       if (data.code === 200) {
-        alert('Post created!');
-        navigate('/');
+        alert("Post created!");
+        navigate("/");
       } else {
-        throw new Error(data.msg || 'Unknown error');
+        throw new Error(data.msg || "Unknown error");
       }
     } catch (err) {
       console.error(err);
-      alert('Failed: ' + err.message);
+      alert("Failed: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -87,17 +91,21 @@ function CreatePostPage() {
                       accept="image/*"
                       onChange={(e) => {
                         const newFiles = Array.from(e.target.files);
-                        setSelectedFiles(prev => [...prev, ...newFiles].slice(0, 9));
+                        setSelectedFiles((prev) =>
+                          [...prev, ...newFiles].slice(0, 9),
+                        );
                         e.target.value = null;
                       }}
                     />
                     <span className="file-cta">
-                      <span className="file-icon"><i className="fas fa-upload"></i></span>
+                      <span className="file-icon">
+                        <i className="fas fa-upload"></i>
+                      </span>
                       <span className="file-label">Choose images (max 9)</span>
                     </span>
                     {selectedFiles.length > 0 && (
                       <span className="file-name">
-                        {selectedFiles.map(f => f.name).join(', ')}
+                        {selectedFiles.map((f) => f.name).join(", ")}
                       </span>
                     )}
                   </label>
@@ -110,7 +118,9 @@ function CreatePostPage() {
                         <button
                           className="delete is-small"
                           onClick={() => {
-                            setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+                            setSelectedFiles((prev) =>
+                              prev.filter((_, i) => i !== idx),
+                            );
                           }}
                         ></button>
                       </span>
@@ -121,22 +131,25 @@ function CreatePostPage() {
                   className="input mb-3"
                   placeholder="Title"
                   value={title}
-                  onChange={e => setTitle(e.target.value)}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
                 <textarea
                   className="textarea mb-3"
                   placeholder="Content"
                   value={content}
-                  onChange={e => setContent(e.target.value)}
+                  onChange={(e) => setContent(e.target.value)}
                   rows={8}
                 />
                 <input
                   className="input mb-3"
                   placeholder="Location (optional)"
                   value={location}
-                  onChange={e => setLocation(e.target.value)}
+                  onChange={(e) => setLocation(e.target.value)}
                 />
-                <button className="button is-dark is-fullwidth" onClick={handleSubmit}>
+                <button
+                  className="button is-dark is-fullwidth"
+                  onClick={handleSubmit}
+                >
                   Publish
                 </button>
               </div>

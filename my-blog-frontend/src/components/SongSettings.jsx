@@ -1,36 +1,40 @@
-import { useState, useEffect } from 'react';
-import { authFetch } from '../utils';
+import { useState, useEffect } from "react";
+import { authFetch } from "../utils";
 
 function SongSettings() {
-  const [title, setTitle] = useState('');
-  const [artist, setArtist] = useState('');
-  const [url, setUrl] = useState('');
-  const [cover, setCover] = useState('');
-  const [lrc, setLrc] = useState('');
-  const [msg, setMsg] = useState('');
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
+  const [url, setUrl] = useState("");
+  const [cover, setCover] = useState("");
+  const [lrc, setLrc] = useState("");
+  const [msg, setMsg] = useState("");
 
   // 服务器上的歌曲文件列表
   const [musicFiles, setMusicFiles] = useState([]);
-  const [selectedFile, setSelectedFile] = useState('');
+  const [selectedFile, setSelectedFile] = useState("");
 
   // 加载当前已保存的歌曲信息
   useEffect(() => {
-    authFetch('/api/song').then(r => r.json()).then(data => {
-      if (data.data) {
-        setTitle(data.data.title || '');
-        setArtist(data.data.artist || '');
-        setUrl(data.data.url || '');
-        setCover(data.data.cover || '');
-        setLrc(data.data.lrc || '');
-      }
-    });
+    authFetch("/api/song")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.data) {
+          setTitle(data.data.title || "");
+          setArtist(data.data.artist || "");
+          setUrl(data.data.url || "");
+          setCover(data.data.cover || "");
+          setLrc(data.data.lrc || "");
+        }
+      });
   }, []);
 
   // 加载服务器上的 mp3 文件列表
   useEffect(() => {
-    authFetch('/api/admin/music-files').then(r => r.json()).then(data => {
-      if (data.code === 200) setMusicFiles(data.data);
-    });
+    authFetch("/api/admin/music-files")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.code === 200) setMusicFiles(data.data);
+      });
   }, []);
 
   // 从下拉列表选择文件时自动填充 URL 和可能的歌名/歌手
@@ -46,19 +50,19 @@ function SongSettings() {
       setTitle(match[2].trim());
     } else {
       // 没有分隔符时，仅把文件名（去掉 .mp3）作为歌名
-      setTitle(filename.replace(/\.mp3$/, ''));
-      setArtist('');
+      setTitle(filename.replace(/\.mp3$/, ""));
+      setArtist("");
     }
   };
 
   const save = async () => {
-    await authFetch('/api/admin/song', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, artist, url, cover, lrc })
+    await authFetch("/api/admin/song", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ title, artist, url, cover, lrc }),
     });
-    setMsg('Saved!');
+    setMsg("Saved!");
   };
 
   return (
@@ -75,8 +79,10 @@ function SongSettings() {
               onChange={(e) => handleFileSelect(e.target.value)}
             >
               <option value="">-- Choose a file --</option>
-              {musicFiles.map(file => (
-                <option key={file} value={file}>{file}</option>
+              {musicFiles.map((file) => (
+                <option key={file} value={file}>
+                  {file}
+                </option>
               ))}
             </select>
           </div>
@@ -86,33 +92,35 @@ function SongSettings() {
           className="input mb-2"
           placeholder="Title"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
         />
         <input
           className="input mb-2"
           placeholder="Artist"
           value={artist}
-          onChange={e => setArtist(e.target.value)}
+          onChange={(e) => setArtist(e.target.value)}
         />
         <input
           className="input mb-2"
           placeholder="MP3 URL"
           value={url}
-          onChange={e => setUrl(e.target.value)}
+          onChange={(e) => setUrl(e.target.value)}
         />
         <input
           className="input mb-2"
           placeholder="Cover URL"
           value={cover}
-          onChange={e => setCover(e.target.value)}
+          onChange={(e) => setCover(e.target.value)}
         />
         <textarea
           className="textarea mb-2"
           placeholder="LRC lyrics (optional)"
           value={lrc}
-          onChange={e => setLrc(e.target.value)}
+          onChange={(e) => setLrc(e.target.value)}
         />
-        <button className="button is-dark" onClick={save}>Save</button>
+        <button className="button is-dark" onClick={save}>
+          Save
+        </button>
         {msg && <p className="mt-2">{msg}</p>}
       </div>
     </section>

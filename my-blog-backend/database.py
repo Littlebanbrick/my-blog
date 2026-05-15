@@ -72,7 +72,8 @@ users = sqlalchemy.Table(
     Column("role", String(50), nullable=False, default="user"),  # User or admin
     Column("is_verified", Integer, default=0),
     Column("verify_token", String(255), nullable=True),
-    Column("verify_token_expire", String(255), nullable=True)
+    Column("verify_token_expire", String(255), nullable=True),
+    Column("last_username_change", String(255), nullable=True),   # 上次修改用户名的时间
 )
 
 # ========== Table of projects  ==========
@@ -97,6 +98,7 @@ messages = sqlalchemy.Table(
     Column("is_read", Integer, default=0),
     Column("parent_id", Integer, nullable=True),
     Column("root_id", Integer, nullable=True),
+    Column("quoted_id", Integer, nullable=False),
 )
 
 # ========== Table of song configs  ==========
@@ -109,6 +111,25 @@ song_config = sqlalchemy.Table(
     Column("url", String(300)),
     Column("cover", String(300)),
     Column("lrc", Text),
+)
+
+# ========== Table of DeepSeek API usage tracking ==========
+deepseek_usage = sqlalchemy.Table(
+    "deepseek_usage",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("username", String(50), nullable=False),
+    Column("date", String(10), nullable=False),         # YYYY-MM-DD UTC+8
+    Column("count", Integer, default=0),
+)
+
+# ========== Table of recent trend repos ==========
+recent_repos = sqlalchemy.Table(
+    "recent_repos",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("repo_name", String(200), nullable=False),   # 仓库全名，如 owner/repo
+    Column("date", String(10), nullable=False),         # YYYY-MM-DD UTC+8
 )
 
 engine = create_engine(
@@ -140,6 +161,10 @@ def fix_missing_columns():
             
             if not column_exists("users", "verify_token_expire"):
                 conn.execute(text("ALTER TABLE users ADD COLUMN verify_token_expire VARCHAR(255) NULL"))
+            
+            # 新增：last_username_change 字段
+            if not column_exists("users", "last_username_change"):
+                conn.execute(text("ALTER TABLE users ADD COLUMN last_username_change VARCHAR(255) NULL"))
                 
             if not column_exists("comments", "parent_id"):
                 conn.execute(text("ALTER TABLE comments ADD COLUMN parent_id INTEGER"))
@@ -179,11 +204,42 @@ def fix_missing_columns():
                 
             if not column_exists("messages", "root_id"):
                 conn.execute(text("ALTER TABLE messages ADD COLUMN root_id INTEGER"))
+                            
+            if not column_exists("messages", "quoted_id"):
+                conn.execute(text("ALTER TABLE messages ADD COLUMN quoted_id INTEGER"))
+                
+            if not column_exists("recent_repos", "id"):
+                conn.execute(text("ALTER TABLE recent_repos ADD COLUMN id INTEGER"))
+                
+            if not column_exists("recent_repos", "repo_name"):
+                conn.execute(text("ALTER TABLE recent_repos ADD COLUMN repo_name VARCHAR(200)"))
+
+            if not column_exists("recent_repos", "date"):
+                conn.execute(text("ALTER TABLE recent_repos ADD COLUMN date VARCHAR(10)"))
+            
+            if not column_exists("deepseek_usage", "id"):
+                conn.execute(text("ALTER TABLE deepseek_usage ADD COLUMN id INTEGER"))
+            if not column_exists("deepseek_usage", "username"):
+                conn.execute(text("ALTER TABLE deepseek_usage ADD COLUMN username VARCHAR(50)"))
+            if not column_exists("deepseek_usage", "date"):
+                conn.execute(text("ALTER TABLE deepseek_usage ADD COLUMN date VARCHAR(10)"))
+            if not column_exists("deepseek_usage", "count"):
+                conn.execute(text("ALTER TABLE deepseek_usage ADD COLUMN count INTEGER DEFAULT 0"))
             
             conn.commit()
             print("All missing columns added successfully!")
     except Exception as e:
         print(f"Error adding columns: {str(e)}")
+        
+    # 创建唯一索引，防止重复点赞
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_likes_user_post ON likes(user_name, post_id)"
+            ))
+            conn.commit()
+    except Exception as e:
+        print(f"Unique index may already exist or error: {e}")
 
 fix_missing_columns()
 

@@ -1,32 +1,32 @@
 // src/components/MiddleWidgets.jsx
 
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { getCurrentUser, getImageUrl, authFetch } from '../utils'
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { getCurrentUser, getImageUrl, authFetch, getThumbUrl } from "../utils";
 
 function MomentList() {
-  const [moments, setMoments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [likedMap, setLikedMap] = useState({})
-  const [commentsMap, setCommentsMap] = useState({})
-  const [showAllMap, setShowAllMap] = useState({})
-  const location = useLocation()
-  const [isLiking, setIsLiking] = useState(false)
+  const [moments, setMoments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [likedMap, setLikedMap] = useState({});
+  const [commentsMap, setCommentsMap] = useState({});
+  const [showAllMap, setShowAllMap] = useState({});
+  const location = useLocation();
+  const [isLiking, setIsLiking] = useState(false);
 
   // Delete post (admin right-click)
   const handlePostRightClick = async (e, postId) => {
     e.preventDefault();
     const userRes = await getCurrentUser();
-    if (userRes.data?.role !== 'admin') return;
-    if (!window.confirm('Confirm to delete this post?')) return;
+    if (userRes.data?.role !== "admin") return;
+    if (!window.confirm("Confirm to delete this post?")) return;
     try {
       await authFetch(`/api/admin/posts/${postId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+        method: "DELETE",
+        credentials: "include",
       });
       window.location.reload();
     } catch (err) {
-      console.error('Failed to delete post:', err);
+      console.error("Failed to delete post:", err);
     }
   };
 
@@ -35,54 +35,58 @@ function MomentList() {
     e.preventDefault();
     e.stopPropagation();
     const userRes = await getCurrentUser();
-    if (userRes.data?.role !== 'admin') return;
-    if (!window.confirm('Confirm to delete this comment?')) return;
+    if (userRes.data?.role !== "admin") return;
+    if (!window.confirm("Confirm to delete this comment?")) return;
     try {
       await authFetch(`/api/admin/comments/${commentId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+        method: "DELETE",
+        credentials: "include",
       });
       window.location.reload();
     } catch (err) {
-      console.error('Failed to delete comment:', err);
+      console.error("Failed to delete comment:", err);
     }
   };
 
   useEffect(() => {
-    setLoading(true)
+    setLoading(true);
     authFetch(`/api/posts`)
-      .then(res => res.json())
-      .then(async res => {
-        const data = res.data || []
-        setMoments(data)
+      .then((res) => res.json())
+      .then(async (res) => {
+        const data = res.data || [];
+        setMoments(data);
 
-        const statusPromises = data.map(post =>
+        const statusPromises = data.map((post) =>
           authFetch(`/api/posts/${post.id}/like_status`, {
-            credentials: 'include'
+            credentials: "include",
           })
-          .then(res => res.json())
-          .then(s => ({ id: post.id, liked: s?.data?.liked || false }))
-        )
+            .then((res) => res.json())
+            .then((s) => ({ id: post.id, liked: s?.data?.liked || false })),
+        );
 
-        const commentPromises = data.map(post =>
+        const commentPromises = data.map((post) =>
           authFetch(`/api/posts/${post.id}/comments`)
-          .then(res => res.json())
-          .then(c => ({ id: post.id, comments: c.data || c || [] }))
-        )
+            .then((res) => res.json())
+            .then((c) => ({ id: post.id, comments: c.data || c || [] })),
+        );
 
-        const statuses = await Promise.all(statusPromises)
-        const newLiked = {}
-        statuses.forEach(s => { newLiked[s.id] = s.liked })
-        setLikedMap(newLiked)
+        const statuses = await Promise.all(statusPromises);
+        const newLiked = {};
+        statuses.forEach((s) => {
+          newLiked[s.id] = s.liked;
+        });
+        setLikedMap(newLiked);
 
-        const commentResults = await Promise.all(commentPromises)
-        const newComments = {}
-        commentResults.forEach(r => { newComments[r.id] = r.comments })
-        setCommentsMap(newComments)
+        const commentResults = await Promise.all(commentPromises);
+        const newComments = {};
+        commentResults.forEach((r) => {
+          newComments[r.id] = r.comments;
+        });
+        setCommentsMap(newComments);
       })
-      .catch(err => console.error('Failed to fetch posts:', err))
-      .finally(() => setLoading(false))
-  }, [location.pathname])
+      .catch((err) => console.error("Failed to fetch posts:", err))
+      .finally(() => setLoading(false));
+  }, [location.pathname]);
 
   const handleLike = async (e, postId) => {
     e.stopPropagation();
@@ -91,41 +95,45 @@ function MomentList() {
 
     const userRes = await getCurrentUser();
     if (!userRes?.data?.username) {
-      alert('Please login to like the post.');
+      alert("Please login to like the post.");
       return;
     }
 
     setIsLiking(true);
     try {
       const res = await authFetch(`/api/posts/${postId}/like`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
       const data = await res.json();
       if (data?.data) {
-        setLikedMap(prev => ({ ...prev, [postId]: data.data.liked }));
-        setMoments(prev =>
-          prev.map(m =>
-            m.id === postId ? { ...m, likes_count: data.data.likes_count } : m
-          )
+        setLikedMap((prev) => ({ ...prev, [postId]: data.data.liked }));
+        setMoments((prev) =>
+          prev.map((m) =>
+            m.id === postId ? { ...m, likes_count: data.data.likes_count } : m,
+          ),
         );
       }
     } catch (err) {
-      console.error('Like error:', err);
+      console.error("Like error:", err);
     } finally {
       setIsLiking(false);
     }
   };
 
   const toggleShowAll = (e, postId) => {
-    e.stopPropagation()
-    e.preventDefault()
-    setShowAllMap(prev => ({ ...prev, [postId]: !prev[postId] }))
-  }
+    e.stopPropagation();
+    e.preventDefault();
+    setShowAllMap((prev) => ({ ...prev, [postId]: !prev[postId] }));
+  };
 
   if (loading) {
-    return <div className="card"><div className="card-content">Loading moments...</div></div>
+    return (
+      <div className="card">
+        <div className="card-content">Loading moments...</div>
+      </div>
+    );
   }
 
   return (
@@ -168,25 +176,28 @@ function MomentList() {
           .moment-stats-row {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1.5rem;
           }
         }
       `}</style>
-
-      <div className={loading ? '' : 'moment-slide-up'}>
+      <div className={loading ? "" : "moment-slide-up"}>
         {moments.map((item) => {
-          const isLiked = likedMap[item.id] || false
-          const rawComments = commentsMap[item.id]
-          const comments = Array.isArray(rawComments) ? rawComments : []
-          const showAll = showAllMap[item.id] || false
-          const displayedComments = showAll ? comments : comments.slice(0, 5)
+          const isLiked = likedMap[item.id] || false;
+          const rawComments = commentsMap[item.id];
+          const comments = Array.isArray(rawComments) ? rawComments : [];
+          const showAll = showAllMap[item.id] || false;
+          const displayedComments = showAll ? comments : comments.slice(0, 5);
 
           return (
             <Link
               className="card"
               to={`/post/${item.id}`}
               key={item.id}
-              style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}
+              style={{
+                display: "block",
+                color: "inherit",
+                textDecoration: "none",
+              }}
               onContextMenu={(e) => handlePostRightClick(e, item.id)}
             >
               <article className="card-content article" role="article">
@@ -201,17 +212,21 @@ function MomentList() {
                       <div className="moment-stats-row">
                         <span
                           className="icon-text is-align-items-center"
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: "pointer" }}
                           onClick={(e) => handleLike(e, item.id)}
                         >
-                          <i className={`${isLiked ? 'fas' : 'fa-regular'} fa-heart`}
-                            style={{ color: isLiked ? '#e0245e' : 'inherit' }}></i>
+                          <i
+                            className={`${isLiked ? "fas" : "fa-regular"} fa-heart`}
+                            style={{ color: isLiked ? "#e0245e" : "inherit" }}
+                          ></i>
                           <span className="ml-1">{item.likes_count ?? 0}</span>
                         </span>
 
                         <span className="commentCountImg">
                           <i className="fa-regular fa-comment-dots"></i>
-                          <span className="ml-1 commentCount">{item.comment_count ?? 0}</span>
+                          <span className="ml-1 commentCount">
+                            {item.comment_count ?? 0}
+                          </span>
                         </span>
 
                         <span className="level-item">
@@ -226,7 +241,7 @@ function MomentList() {
                 <h1 className="title is-3 is-size-4-mobile">{item.title}</h1>
                 {item.title !== "🤖 GitHub Trending Today" && (
                   <div className="content">
-                    <p style={{ whiteSpace: 'pre-line' }}>{item.preview}</p>
+                    <p style={{ whiteSpace: "pre-line" }}>{item.preview}</p>
                   </div>
                 )}
 
@@ -236,14 +251,15 @@ function MomentList() {
                       <div className="column is-12">
                         <figure>
                           <img
-                            src={getImageUrl(item.images[0])}
+                            src={getImageUrl(getThumbUrl(item.images[0]))}
                             alt="post image"
                             style={{
-                              width: '100%',
-                              maxHeight: '300px',
-                              objectFit: 'contain',
-                              display: 'block',
+                              width: "100%",
+                              maxHeight: "300px",
+                              objectFit: "contain",
+                              display: "block",
                             }}
+                            loading="lazy"
                           />
                         </figure>
                       </div>
@@ -252,9 +268,10 @@ function MomentList() {
                         <div key={idx} className="column is-6">
                           <figure className="image is-square">
                             <img
-                              src={getImageUrl(url)}
+                              src={getImageUrl(getThumbUrl(url))}
                               alt={`img-${idx}`}
-                              style={{ objectFit: 'cover' }}
+                              style={{ objectFit: "cover" }}
+                              loading="lazy"
                             />
                           </figure>
                         </div>
@@ -267,7 +284,9 @@ function MomentList() {
                   <div className="index-category-tag">
                     <div className="level-item">
                       <i className="fa-solid fa-map-location-dot mr-2"></i>
-                      <span className="has-text-grey is-size-7">{item.location}</span>
+                      <span className="has-text-grey is-size-7">
+                        {item.location}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -276,23 +295,34 @@ function MomentList() {
                 {comments.length > 0 && (
                   <div
                     className="comments-inline mt-3"
-                    style={{ borderTop: '1px solid #f0f0f0', paddingTop: '1.4rem' }}
+                    style={{
+                      borderTop: "1px solid #f0f0f0",
+                      paddingTop: "1.4rem",
+                    }}
                   >
-                    {displayedComments.map(comment => (
+                    {displayedComments.map((comment) => (
                       <div key={comment.id} className="media">
                         <div className="media-content">
                           {comment.parent_author ? (
                             <>
                               <strong className="mr-2">{comment.author}</strong>
-                              <span className="has-text-grey is-size-7">reply to </span>
+                              <span className="has-text-grey is-size-7">
+                                reply to{" "}
+                              </span>
                               <strong>{comment.parent_author}</strong>
                               <span>: </span>
-                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                              <i style={{ whiteSpace: "pre-line" }}>
+                                {comment.content}
+                              </i>
                             </>
                           ) : (
                             <>
-                              <strong className="mr-2">{comment.author}:</strong>
-                              <i style={{ whiteSpace: 'pre-line' }}>{comment.content}</i>
+                              <strong className="mr-2">
+                                {comment.author}:
+                              </strong>
+                              <i style={{ whiteSpace: "pre-line" }}>
+                                {comment.content}
+                              </i>
                             </>
                           )}
                         </div>
@@ -303,18 +333,20 @@ function MomentList() {
                         className="button is-text is-small mt-2"
                         onClick={(e) => toggleShowAll(e, item.id)}
                       >
-                        {showAll ? 'Show less comments' : `Show all ${comments.length} comments`}
+                        {showAll
+                          ? "Show less comments"
+                          : `Show all ${comments.length} comments`}
                       </button>
                     )}
                   </div>
                 )}
               </article>
             </Link>
-          )
+          );
         })}
       </div>
     </>
-  )
+  );
 }
 
-export default MomentList
+export default MomentList;

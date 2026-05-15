@@ -1,17 +1,25 @@
-import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { getComments, getCurrentUser, addComment, getImageUrl, authFetch } from '../utils';
-import DOMPurify from 'dompurify';
-import Lightbox from './LightBox';
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import {
+  getComments,
+  getCurrentUser,
+  addComment,
+  getImageUrl,
+  authFetch,
+  getThumbUrl,
+} from "../utils";
+import DOMPurify from "dompurify";
+import Lightbox from "./LightBox";
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 function PostPage() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
+  const [newComment, setNewComment] = useState("");
   const [isLiked, setIsLiked] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [likesUsers, setLikesUsers] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
@@ -19,28 +27,29 @@ function PostPage() {
 
   useEffect(() => {
     authFetch(`${API_BASE}/me`, { credentials: "include" })
-      .then(res => res.json())
-      .then(data => setIsLoggedIn(data.code === 200));
+      .then((res) => res.json())
+      .then((data) => setIsLoggedIn(data.code === 200));
 
     authFetch(`${API_BASE}/posts/${id}`)
-      .then(r => r.json())
-      .then(res => setPost(res.data || null));
+      .then((r) => r.json())
+      .then((res) => setPost(res.data || null));
 
-    authFetch(`${API_BASE}/posts/${id}/like_status`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(res => setIsLiked(res?.data?.liked || false));
+    authFetch(`${API_BASE}/posts/${id}/like_status`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((res) => setIsLiked(res?.data?.liked || false));
 
     authFetch(`${API_BASE}/posts/${id}/likes`)
-      .then(r => r.json())
-      .then(res => setLikesUsers(res.data || []));
+      .then((r) => r.json())
+      .then((res) => setLikesUsers(res.data || []));
 
-    getComments(id).then(res => setComments(res.data || res || []));
+    getComments(id).then((res) => setComments(res.data || res || []));
   }, [id]);
 
   const handleLike = async () => {
+    if (isLiking) return;
     const userRes = await getCurrentUser();
     if (!userRes?.data?.username) {
-      alert('Please login to like the post.');
+      alert("Please login to like the post.");
       return;
     }
 
@@ -55,8 +64,8 @@ function PostPage() {
         setPost({ ...post, likes_count: data.data.likes_count });
         setIsLiked(data.data.liked);
         authFetch(`/api/posts/${id}/likes`)
-          .then(r => r.json())
-          .then(res => setLikesUsers(res.data || []));
+          .then((r) => r.json())
+          .then((res) => setLikesUsers(res.data || []));
       }
     } catch (error) {
       console.log("Please login to like the post.");
@@ -65,49 +74,55 @@ function PostPage() {
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
-
     const userRes = await getCurrentUser();
     if (!userRes?.data?.username) {
-      alert('Please login to comment.');
+      alert("Please login to comment.");
       return;
     }
-
     const body = { content: newComment };
     if (replyTo) body.parent_id = replyTo.id;
-
     try {
       await authFetch(`/api/posts/${id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
       });
       setNewComment("");
       setReplyTo(null);
-      getComments(id).then(res => setComments(res.data || []));
+      // 刷新评论列表
+      getComments(id).then((res) => setComments(res.data || []));
+      // 更新评论计数（从后端重新获取帖子或手动 +1）
+      setPost((prev) =>
+        prev ? { ...prev, comment_count: (prev.comment_count || 0) + 1 } : prev,
+      );
     } catch (error) {
       console.log("Failed to submit comment", error);
     }
   };
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Delete this comment?')) return;
+    if (!window.confirm("Delete this comment?")) return;
     await authFetch(`${API_BASE}/admin/comments/${commentId}`, {
-      method: 'DELETE',
-      credentials: 'include'
+      method: "DELETE",
+      credentials: "include",
     });
-    getComments(id).then(res => setComments(res.data || []));
+    getComments(id).then((res) => setComments(res.data || []));
   };
 
   const openLightbox = (index) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
   const prevImage = () => {
     if (!post?.images?.length) return;
-    setLightboxIndex(prev => (prev === 0 ? post.images.length - 1 : prev - 1));
+    setLightboxIndex((prev) =>
+      prev === 0 ? post.images.length - 1 : prev - 1,
+    );
   };
   const nextImage = () => {
     if (!post?.images?.length) return;
-    setLightboxIndex(prev => (prev === post.images.length - 1 ? 0 : prev + 1));
+    setLightboxIndex((prev) =>
+      prev === post.images.length - 1 ? 0 : prev + 1,
+    );
   };
 
   if (!post) {
@@ -118,22 +133,33 @@ function PostPage() {
     );
   }
 
-  const validImages = (post.images || []).filter(url => url && url.trim() !== '');
+  const validImages = (post.images || []).filter(
+    (url) => url && url.trim() !== "",
+  );
 
   return (
     <>
       <section className="section has-navbar-fixed-top">
         <div className="container">
           <div className="level is-mobile mb-3">
-            <div className="level-left">
-              <h1 className="title is-2 mb-0">{post.title}</h1>
+            <div className="level-left" style={{ flexShrink: 1, minWidth: 0 }}>
+              <h1
+                className="title is-2 mb-0"
+                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+              >
+                {post.title}
+              </h1>
             </div>
             <div className="level-right">
-              <span className="icon-text" style={{ cursor: 'pointer' }} onClick={handleLike}>
-                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <span
+                className="icon-text"
+                style={{ cursor: "pointer" }}
+                onClick={handleLike}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center" }}>
                   <i
-                    className={isLiked ? 'fas fa-heart' : 'fa-regular fa-heart'}
-                    style={{ color: isLiked ? '#e0245e' : 'inherit' }}
+                    className={isLiked ? "fas fa-heart" : "fa-regular fa-heart"}
+                    style={{ color: isLiked ? "#e0245e" : "inherit" }}
                   ></i>
                   <span className="ml-1">{post.likes_count ?? 0}</span>
                 </span>
@@ -143,32 +169,48 @@ function PostPage() {
 
           <div
             className="content"
-            style={{ lineHeight: 2, fontSize: '1.1rem' }}
+            style={{
+              lineHeight: 2,
+              fontSize: "1.1rem",
+              overflowWrap: "break-word",
+              wordBreak: "break-word",
+              overflowX: "hidden",
+            }}
             dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize((post.preview || "").replace(/\n/g, '<br>'))
+              __html: DOMPurify.sanitize(
+                (post.preview || "").replace(/\n/g, "<br>"),
+              ),
             }}
           />
 
           {/* Images display area */}
           {validImages.length > 0 && (
-            <div className="mt-3" style={{ textAlign: 'left' }}>
+            <div className="mt-3 post-images-wrapper">
               {validImages.length === 1 ? (
-                <figure className="image" style={{ maxWidth: '100%', cursor: 'pointer' }} onClick={() => openLightbox(0)}>
+                <figure
+                  className="image single-post-image"
+                  style={{ maxWidth: "100%", cursor: "pointer" }}
+                  onClick={() => openLightbox(0)}
+                >
                   <img
                     src={getImageUrl(validImages[0])}
                     alt="post image"
-                    style={{ maxHeight: '400px', objectFit: 'contain' }}
+                    style={{ maxHeight: "400px", objectFit: "contain" }}
                   />
                 </figure>
               ) : (
                 <div className="columns is-multiline is-mobile">
                   {validImages.map((url, idx) => (
-                    <div key={idx} className="column is-4">
-                      <figure className="image is-3by2" onClick={() => openLightbox(idx)} style={{ cursor: 'pointer' }}>
+                    <div key={idx} className="column is-4 post-image-column">
+                      <figure
+                        className="image is-3by2"
+                        onClick={() => openLightbox(idx)}
+                        style={{ cursor: "pointer" }}
+                      >
                         <img
                           src={getImageUrl(url)}
                           alt={`post-img-${idx}`}
-                          style={{ objectFit: 'cover' }}
+                          style={{ objectFit: "cover" }}
                         />
                       </figure>
                     </div>
@@ -181,37 +223,54 @@ function PostPage() {
           {/* Like list */}
           {likesUsers.length > 0 && (
             <div className="mt-3">
-              <small className="has-text-grey">Liked by: {likesUsers.map(u => u.user_name).join(', ')}</small>
+              <small
+                className="has-text-grey"
+                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+              >
+                Liked by: {likesUsers.map((u) => u.user_name).join(", ")}
+              </small>
             </div>
           )}
 
           <hr />
           <h3 className="title is-4">Comments ({comments.length})</h3>
-          {comments.map(c => (
+          {comments.map((c) => (
             <div
               key={c.id}
               className="box"
               style={{
-                marginLeft: c.parent_id ? '2rem' : '0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                marginLeft: c.parent_id ? "min(2rem, 5vw)" : "0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                getCurrentUser().then(res => {
+                getCurrentUser().then((res) => {
                   if (res.data?.role === "admin") handleDeleteComment(c.id);
                 });
               }}
             >
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <strong>{c.author}</strong>
                 {c.parent_author && (
-                  <span className="has-text-grey is-size-7"> reply to <strong>{c.parent_author}</strong></span>
+                  <span className="has-text-grey is-size-7">
+                    {" "}
+                    reply to <strong>{c.parent_author}</strong>
+                  </span>
                 )}
                 <small className="has-text-grey ml-2">{c.created_at}</small>
-                <p className="mt-1" style={{ whiteSpace: 'pre-line' }}>{c.content}</p>
+                <p
+                  className="mt-1"
+                  style={{
+                    whiteSpace: "pre-line",
+                    overflowWrap: "break-word",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {c.content}
+                </p>
               </div>
               {isLoggedIn && (
                 <button
@@ -229,16 +288,18 @@ function PostPage() {
             <div
               className="notification is-light is-info is-small"
               style={{
-                padding: '0.5rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                padding: "0.5rem 1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <span>Replying to <strong>{replyTo.author}</strong></span>
+              <span>
+                Replying to <strong>{replyTo.author}</strong>
+              </span>
               <button
                 className="delete is-small"
-                style={{ verticalAlign: 'middle', marginTop: 0 }}
+                style={{ verticalAlign: "middle", marginTop: 0 }}
                 onClick={() => setReplyTo(null)}
               />
             </div>
@@ -246,7 +307,7 @@ function PostPage() {
           <textarea
             className="textarea"
             value={newComment}
-            onChange={e => setNewComment(e.target.value)}
+            onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a comment..."
           />
           <button className="button is-dark mt-4" onClick={handleSubmitComment}>
@@ -258,13 +319,43 @@ function PostPage() {
       {/* Lightbox */}
       {lightboxIndex !== null && validImages.length > 0 && (
         <Lightbox
-          images={validImages.map(url => getImageUrl(url))}
+          images={validImages.map((url) => getImageUrl(url))}
           currentIndex={lightboxIndex}
           onClose={closeLightbox}
           onPrev={prevImage}
           onNext={nextImage}
         />
       )}
+      <style>{`
+        @media (max-width: 1023px) {
+          .post-images-wrapper {
+            text-align: center !important;  /* 居中显示 */
+          }
+          .single-post-image {
+            width: 100% !important;
+            max-height: none !important;
+          }
+          .single-post-image img {
+            width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            object-fit: contain !important;
+          }
+          .post-image-column {
+            width: 100% !important;        /* 每张图片占满一行 */
+            flex: none !important;
+            margin: 0 0 1rem 0 !important;
+          }
+          .post-image-column figure {
+            margin: 0 !important;
+          }
+          .post-image-column img {
+            width: 100% !important;
+            height: auto !important;
+            object-fit: cover !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

@@ -1,30 +1,30 @@
 // src/App.jsx
-import { ThemeProvider } from './context/ThemeContext'
-import HomePage from './components/HomePage'
-import PostPage from './components/PostPage'
-import Header from './components/Header'
-import Footer from './components/Footer'
-import LoginPage from './components/LoginPage'
-import RegisterPage from './components/RegisterPage'
-import VerifyEmail from './components/VerifyEmail'
-import WaitVerification from './components/WaitVerification'
-import ProfilePage from './components/ProfilePage'
-import CreatePostPage from './components/CreatePostPage'
-import ArchivesPage from './components/ArchivesPage'
-import PhotographyPage from './components/PhotographyPage'
-import StudyNotesPage from './components/StudyNotesPage'
-import NotePage from './components/NotePage'
-import ProjectsPage from './components/ProjectsPage'
-import NoteEditor from './components/NoteEditor'
-import ProjectEditor from './components/ProjectEditor'
-import AboutPage from './components/AboutPage'
-import ContactPage from './components/ContactPage'
-import MessagesPage from './components/MessagePage'
-import MyMessagesPage from './components/MyMessagePage'
-import CliChatBot from './components/CliChatBot'
-import SongSettings from './components/SongSettings'
-
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from "./context/ThemeContext";
+import HomePage from "./components/HomePage";
+import PostPage from "./components/PostPage";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import LoginPage from "./components/LoginPage";
+import RegisterPage from "./components/RegisterPage";
+import VerifyEmail from "./components/VerifyEmail";
+import WaitVerification from "./components/WaitVerification";
+import ProfilePage from "./components/ProfilePage";
+import CreatePostPage from "./components/CreatePostPage";
+import ArchivesPage from "./components/ArchivesPage";
+import PhotographyPage from "./components/PhotographyPage";
+import StudyNotesPage from "./components/StudyNotesPage";
+import NotePage from "./components/NotePage";
+import ProjectsPage from "./components/ProjectsPage";
+import NoteEditor from "./components/NoteEditor";
+import ProjectEditor from "./components/ProjectEditor";
+import AboutPage from "./components/AboutPage";
+import ContactPage from "./components/ContactPage";
+import MessagesPage from "./components/MessagePage";
+import MyMessagesPage from "./components/MyMessagePage";
+import CliChatBot from "./components/CliChatBot";
+import SongSettings from "./components/SongSettings";
+import LinksPage from './components/LinksPage';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
   return (
@@ -55,6 +55,7 @@ function App() {
           <Route path="/my-messages" element={<MyMessagesPage />} />
           <Route path="/cli" element={<CliChatBot />} />
           <Route path="/admin/song" element={<SongSettings />} />
+          <Route path="/links" element={<LinksPage />} />
         </Routes>
         <Footer />
       </BrowserRouter>

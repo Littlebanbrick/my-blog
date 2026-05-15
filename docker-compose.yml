@@ -3,8 +3,7 @@ services:
     build:
       context: .
       dockerfile: my-blog-backend/Dockerfile
-    ports:
-      - "8000:8000"
+    # 后端端口不再暴露到宿主机，仅通过 Docker 内部网络与 frontend 通信
     volumes:
       - ./data:/app/data
       - static_data:/app/static
@@ -13,7 +12,7 @@ services:
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
       - SENDER_EMAIL=${SENDER_EMAIL}
       - SENDER_AUTH_CODE=${SENDER_AUTH_CODE}
-      - ENV=development   # 到时候记得改回来！！！！！！！！！
+      - ENV=production
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - MCP_SECRET_KEY=${MCP_SECRET_KEY}
     dns:
@@ -27,10 +26,23 @@ services:
       dockerfile: my-blog-frontend/Dockerfile
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - certbot_www:/var/www/certbot:ro
+      - certbot_etc:/etc/letsencrypt:ro
     depends_on:
       - backend
     restart: unless-stopped
 
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
+
 volumes:
-  db_data:
   static_data:
+  certbot_etc:
+  certbot_www:

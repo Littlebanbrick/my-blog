@@ -1,0 +1,202 @@
+// src/components/LinksPage.jsx
+import { useEffect, useState, useRef } from "react";
+
+function LinksPage() {
+  const [profile, setProfile] = useState(null);
+  const [friendGroups, setFriendGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const profileData = {
+        avatar: "/myAvatar.jpg",
+        name: "Johnny Wang",
+        bio: "Unique, be yourself, be a monster!",
+      };
+      setProfile(profileData);
+
+      const groups = [
+        {
+          id: 1,
+          title: "Friends",
+          description: "My best buddies in tech and life.",
+          links: [
+            {
+              name: "Augrottos",
+              avatar: "https://avatars.githubusercontent.com/u/268848168?v=4",
+              url: "https://github.com/Augrottos",
+              description: "AI researcher and indie maker",
+            },
+          ],
+        },
+        {
+          id: 2,
+          title: "Study Partners",
+          description: "People who inspire me to learn more.",
+          links: [
+            {
+              name: "Aliceeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              avatar: "https://randomuser.me/api/portraits/women/1.jpg",
+              url: "https://example.com/alice",
+              description: "Machine Learning expertttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+            },
+          ],
+        },
+      ];
+      setFriendGroups(groups);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  // 跑马灯文本组件：悬停时滚动
+  const MarqueeText = ({ text, className }) => {
+    const containerRef = useRef(null);
+    const [needsScroll, setNeedsScroll] = useState(false);
+
+    useEffect(() => {
+      const check = () => {
+        if (containerRef.current) {
+          setNeedsScroll(containerRef.current.scrollWidth > containerRef.current.clientWidth);
+        }
+      };
+      check();
+      window.addEventListener("resize", check);
+      return () => window.removeEventListener("resize", check);
+    }, [text]);
+
+    return (
+      <div
+        ref={containerRef}
+        className={`marquee-container ${needsScroll ? "needs-scroll" : ""}`}
+        style={{
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+          textOverflow: "ellipsis",
+        }}
+      >
+        <div className="marquee-content" style={{ display: "inline-block" }}>
+          {text}
+          {needsScroll && <span className="marquee-clone">{text}</span>}
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return <div className="section">Loading...</div>;
+  }
+
+  return (
+    <div style={{ marginTop: "2rem" }}>
+      <section className="section">
+        <div className="container">
+          <h1 className="title is-2">Friends & Links</h1>
+
+          {/* 个人信息卡片 */}
+          {profile && (
+            <div className="card mb-5">
+              <div className="card-content">
+                <div className="media" style={{ alignItems: "center" }}>
+                  <div className="media-left">
+                    <figure className="image is-96x96">
+                      <img src={profile.avatar} alt="Avatar" className="is-rounded" />
+                    </figure>
+                  </div>
+                  <div className="media-content" style={{ minWidth: 0 }}>
+                    <p className="title is-4" style={{ marginBottom: "0.25rem" }}>
+                      {profile.name}
+                    </p>
+                    <p className="subtitle is-6" style={{ marginTop: "0.05rem" }}>
+                      {profile.bio}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 友链分组 */}
+          {friendGroups.map((group) => (
+            <div key={group.id} className="card mb-5">
+              <div className="card-content">
+                <h2 className="title is-4 has-text-dark" style={{ marginBottom: "0.5rem" }}>
+                  {group.title}
+                </h2>
+                {group.description && (
+                  <p className="mb-2" style={{ marginBottom: "0.75rem" }}>
+                    {group.description}
+                  </p>
+                )}
+                <div className="columns is-multiline">
+                  {group.links.map((link, idx) => (
+                    <div key={idx} className="column is-4">
+                      <div className="card">
+                        <div className="card-content">
+                          <div className="media">
+                            <div className="media-left">
+                              <figure className="image is-48x48">
+                                <img src={link.avatar} alt={link.name} className="is-rounded" />
+                              </figure>
+                            </div>
+                            <div className="media-content" style={{ minWidth: 0 }}>
+                              <p className="title is-6" style={{ marginBottom: "0.05rem" }}>
+                                <a href={link.url} target="_blank" rel="noopener noreferrer">
+                                  <MarqueeText text={link.name} />
+                                </a>
+                              </p>
+                              {link.description && (
+                                <p className="is-size-7" style={{ marginTop: 0 }}>
+                                  <MarqueeText text={link.description} className="has-text-grey" />
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <style>{`
+        .marquee-container {
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          line-height: 1.6;          /* 增加行高，确保字母完全显示 */
+          padding-bottom: 2px;       /* 额外增加底部内边距，防止裁剪 */
+        }
+        .marquee-container .marquee-content {
+          display: inline-block;
+          white-space: nowrap;
+        }
+        .marquee-container.needs-scroll:hover .marquee-content {
+          animation: marquee 8s linear infinite;
+        }
+        @keyframes marquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        .marquee-container.needs-scroll .marquee-clone {
+          display: inline-block;
+          padding-left: 2rem;
+        }
+        .marquee-container:not(.needs-scroll) .marquee-clone {
+          display: none;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default LinksPage;

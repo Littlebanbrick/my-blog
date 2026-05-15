@@ -1,36 +1,39 @@
 // src/components/MyMessagesPage.jsx
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authFetch, getCurrentUser } from '../utils';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { authFetch, getCurrentUser } from "../utils";
 
 function MyMessagesPage() {
   const [messages, setMessages] = useState([]);
   const [activeRootId, setActiveRootId] = useState(null);
   const [conversation, setConversation] = useState([]);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState("");
+  const [quoteMsg, setQuoteMsg] = useState(null); // 引用消息
   const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    getCurrentUser().then(res => {
+    getCurrentUser().then((res) => {
       if (res.data?.username) setUser(res.data);
-      else navigate('/login');
+      else navigate("/login");
     });
   }, [navigate]);
 
   const fetchMessages = async () => {
-    const res = await authFetch('/api/messages/my');
+    const res = await authFetch("/api/messages/my");
     const data = await res.json();
     if (data.code === 200) setMessages(data.data);
   };
 
-  useEffect(() => { if (user) fetchMessages(); }, [user]);
+  useEffect(() => {
+    if (user) fetchMessages();
+  }, [user]);
 
   useEffect(() => {
     const onFocus = () => fetchMessages();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   const loadConversation = async (rootId) => {
@@ -42,31 +45,41 @@ function MyMessagesPage() {
   const handleSelectRoot = async (msg) => {
     setActiveRootId(msg.id);
     loadConversation(msg.id);
-    await authFetch(`/api/messages/${msg.id}/read`, { method: 'PUT' });
-    setMessages(prev =>
-        prev.map(m => m.id === msg.id ? { ...m, unread_replies: 0 } : m)
+    await authFetch(`/api/messages/${msg.id}/read`, { method: "PUT" });
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, unread_replies: 0 } : m)),
     );
     window.refreshUnread && window.refreshUnread();
+    setQuoteMsg(null);
   };
 
   const handleUserReply = async () => {
     if (!replyText.trim() || !activeRootId) return;
     await authFetch(`/api/messages/${activeRootId}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ content: replyText })
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        content: replyText,
+        quoted_id: quoteMsg?.id || null,
+      }),
     });
-    setReplyText('');
+    setReplyText("");
+    setQuoteMsg(null);
     loadConversation(activeRootId);
     window.refreshUnread && window.refreshUnread();
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation]);
 
-  if (!user) return <section className="section"><div className="container">Loading...</div></section>;
+  if (!user)
+    return (
+      <section className="section">
+        <div className="container">Loading...</div>
+      </section>
+    );
 
   return (
     <section className="section has-navbar-fixed-top">
@@ -75,16 +88,18 @@ function MyMessagesPage() {
           {/* 左侧：我的根消息 */}
           <div className="column is-4">
             <h2 className="title is-4 mb-3">My Messages</h2>
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              {messages.length === 0 && <p className="has-text-grey">No messages yet.</p>}
-              {messages.map(msg => (
+            <div style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              {messages.length === 0 && (
+                <p className="has-text-grey">No messages yet.</p>
+              )}
+              {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`card mb-2 ${msg.id === activeRootId ? 'has-background-light' : ''}`}
+                  className={`card mb-2 ${msg.id === activeRootId ? "has-background-light" : ""}`}
                   onClick={() => handleSelectRoot(msg)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                 >
-                  <div className="card-content" style={{ padding: '0.75rem' }}>
+                  <div className="card-content" style={{ padding: "0.75rem" }}>
                     <p className="is-size-7 has-text-weight-semibold">
                       To Admin
                       {msg.unread_replies > 0 && (
@@ -93,8 +108,12 @@ function MyMessagesPage() {
                         </span>
                       )}
                     </p>
-                    <p className="is-size-7 has-text-grey mt-1">{msg.content?.substring(0, 80)}</p>
-                    <p className="is-size-7 has-text-grey-light mt-1">{msg.created_at}</p>
+                    <p className="is-size-7 has-text-grey mt-1">
+                      {msg.content?.substring(0, 80)}
+                    </p>
+                    <p className="is-size-7 has-text-grey-light mt-1">
+                      {msg.created_at}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -105,50 +124,149 @@ function MyMessagesPage() {
           <div className="column is-8">
             {activeRootId ? (
               <>
-                <div className="box" style={{ minHeight: '55vh', maxHeight: '65vh', overflowY: 'auto' }}>
-                  {conversation.map(msg => (
+                <div
+                  className="box"
+                  style={{
+                    minHeight: "55vh",
+                    maxHeight: "65vh",
+                    overflowY: "auto",
+                  }}
+                >
+                  {conversation.map((msg) => (
                     <div
                       key={msg.id}
                       className="mb-3"
-                      style={{ textAlign: msg.sender_username === user.username ? 'right' : 'left' }}
+                      style={{
+                        textAlign:
+                          msg.sender_username === user.username
+                            ? "right"
+                            : "left",
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (quoteMsg && quoteMsg.id === msg.id) {
+                          setQuoteMsg(null); // 取消引用
+                        } else {
+                          setQuoteMsg({ id: msg.id, content: msg.content });
+                        }
+                      }}
                     >
                       <div
                         style={{
-                          display: 'inline-block',
-                          maxWidth: '80%',
-                          padding: '8px 14px',
-                          borderRadius: '12px',
-                          background: msg.sender_username === user.username ? '#3273dc' : '#f5f5f5',
-                          color: msg.sender_username === user.username ? '#fff' : '#333',
-                          textAlign: 'left'
+                          display: "inline-block",
+                          maxWidth: "80%",
+                          padding: "8px 14px",
+                          borderRadius: "12px",
+                          background:
+                            msg.sender_username === user.username
+                              ? "#3273dc"
+                              : "#f5f5f5",
+                          color:
+                            msg.sender_username === user.username
+                              ? "#fff"
+                              : "#333",
+                          textAlign: "left",
                         }}
                       >
-                        <p className="is-size-7 has-text-weight-bold">{msg.sender_username}</p>
+                        <p className="is-size-7 has-text-weight-bold">
+                          {msg.sender_username}
+                        </p>
+                        {msg.quoted_content && (
+                          <div
+                            style={{
+                              marginBottom: "6px",
+                              borderTop: "1px solid #ccc",
+                              paddingTop: "4px",
+                            }}
+                          >
+                            {msg.sender_username === user.username ? (
+                              <p
+                                className="is-size-7 has-text-white"
+                                style={{ fontStyle: "italic" }}
+                              >
+                                {msg.quoted_content?.length > 100
+                                  ? msg.quoted_content.substring(0, 100) + "..."
+                                  : msg.quoted_content}
+                              </p>
+                            ) : (
+                              <p
+                                className="is-size-7 has-text-grey"
+                                style={{ fontStyle: "italic" }}
+                              >
+                                {msg.quoted_content?.length > 100
+                                  ? msg.quoted_content.substring(0, 100) + "..."
+                                  : msg.quoted_content}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <p>{msg.content}</p>
-                        <p className="is-size-7" style={{ opacity: 0.8 }}>{msg.created_at}</p>
+                        <p className="is-size-7" style={{ opacity: 0.8 }}>
+                          {msg.created_at}
+                        </p>
                       </div>
                     </div>
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
+                {/* 引用提示 */}
+                {quoteMsg && (
+                  <div
+                    className="notification is-light is-info is-small"
+                    style={{
+                      padding: "0.5rem 1rem",
+                      marginBottom: "0.5rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>
+                      Replying to:{" "}
+                      <em>
+                        {quoteMsg.content?.substring(0, 60)}
+                        {quoteMsg.content?.length > 60 ? "..." : ""}
+                      </em>
+                    </span>
+                    <button
+                      className="delete is-small"
+                      onClick={() => setQuoteMsg(null)}
+                    ></button>
+                  </div>
+                )}
                 <div className="field has-addons mt-2">
                   <div className="control is-expanded">
                     <input
                       className="input"
                       type="text"
-                      placeholder="Reply..."
+                      placeholder={
+                        quoteMsg ? "Reply with quote..." : "Reply..."
+                      }
                       value={replyText}
-                      onChange={e => setReplyText(e.target.value)}
-                      onKeyPress={e => e.key === 'Enter' && handleUserReply()}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleUserReply()}
                     />
                   </div>
                   <div className="control">
-                    <button className="button is-dark" onClick={handleUserReply}>Send</button>
+                    <button
+                      className="button is-dark"
+                      onClick={handleUserReply}
+                    >
+                      Send
+                    </button>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="box has-text-centered" style={{ minHeight: '55vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                className="box has-text-centered"
+                style={{
+                  minHeight: "55vh",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <p className="has-text-grey">Select a conversation to view</p>
               </div>
             )}

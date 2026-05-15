@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { authFetch, getCurrentUser } from '../utils'
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { authFetch, getCurrentUser } from "../utils";
 
 function Header() {
-  const [isActive, setIsActive] = useState(false)
-  const navigate = useNavigate()
-  const [user, setUser] = useState(null)
-  const [unread, setUnread] = useState(0)
+  const [isActive, setIsActive] = useState(false);
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     // 之前的做法：从 localStorage 获取 token —— 改为请求后端获取当前用户
@@ -21,7 +21,9 @@ function Header() {
         }
       })
       .catch(() => setUser(null));
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -31,55 +33,59 @@ function Header() {
     }
 
     const fetchUnread = () => {
-      if (user.role === 'admin') {
-        authFetch('/api/admin/messages/unread-count')
-          .then(res => res.json())
-          .then(data => {
+      if (user.role === "admin") {
+        authFetch("/api/admin/messages/unread-count")
+          .then((res) => res.json())
+          .then((data) => {
             if (data.code === 200) setUnread(data.data.unread);
           });
       } else {
-        authFetch('/api/messages/unread-count')
-          .then(res => res.json())
-          .then(data => {
+        authFetch("/api/messages/unread-count")
+          .then((res) => res.json())
+          .then((data) => {
             if (data.code === 200) setUnread(data.data.unread);
           });
       }
     };
 
     fetchUnread();
-    window.refreshUnread = fetchUnread;        // 挂载到全局
+    window.refreshUnread = fetchUnread; // 挂载到全局
 
     const interval = setInterval(fetchUnread, 30000);
     return () => {
       clearInterval(interval);
-      delete window.refreshUnread;              // 清除，避免内存泄漏
+      delete window.refreshUnread; // 清除，避免内存泄漏
     };
   }, [user]);
 
   const handleLogout = async () => {
     // 调用后端 /api/logout 清除 cookie
     try {
-      await authFetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include'
+      await authFetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
       });
     } catch (err) {
       // 忽略错误，仍清本地状态
-      console.error('logout error', err);
+      console.error("logout error", err);
     } finally {
       setUser(null);
-      localStorage.removeItem('token'); // 如果你手动存了 token，也一起删掉
-      window.location.href = '/'; // 刷新页面，触发 Header 重新获取用户信息
+      localStorage.removeItem("token"); // 如果你手动存了 token，也一起删掉
+      window.location.href = "/"; // 刷新页面，触发 Header 重新获取用户信息
     }
   };
 
   return (
-    <nav className="navbar is-fixed-top" role="navigation" aria-label="main navigation">
+    <nav
+      className="navbar is-fixed-top"
+      role="navigation"
+      aria-label="main navigation"
+    >
       <div className="container">
         <div className="navbar-brand">
           <a
             role="button"
-            className={`navbar-burger ${isActive ? 'is-active' : ''}`}
+            className={`navbar-burger ${isActive ? "is-active" : ""}`}
             aria-label="menu"
             aria-expanded="false"
             onClick={() => setIsActive(!isActive)}
@@ -90,7 +96,7 @@ function Header() {
           </a>
         </div>
 
-        <div className={`navbar-menu ${isActive ? 'is-active' : ''}`}>
+        <div className={`navbar-menu ${isActive ? "is-active" : ""}`}>
           <div className="navbar-start">
             <Link className="navbar-item" to="/">
               Home
@@ -101,13 +107,31 @@ function Header() {
             <Link className="navbar-item" to="/about">
               About
             </Link>
-            <Link className="navbar-item" to="https://github.com/Littlebanbrick" target="_blank" rel="noopener noreferrer">
+            <Link className="navbar-item" to="/links">
+              Links
+            </Link>
+            <Link
+              className="navbar-item"
+              to="https://github.com/Littlebanbrick"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <i className="fab fa-github mt-1"></i>
             </Link>
-            <Link className="navbar-item" to="https://space.bilibili.com/3546895630731348?spm_id_from=333.1007.0.0" target="_blank" rel="noopener noreferrer">
+            <Link
+              className="navbar-item"
+              to="https://space.bilibili.com/3546895630731348?spm_id_from=333.1007.0.0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <i className="fa-brands fa-bilibili mt-1"></i>
             </Link>
-            <Link className="navbar-item" to="https://x.com/JohnnyWang5784" target="_blank" rel="noopener noreferrer">
+            <Link
+              className="navbar-item"
+              to="https://x.com/JohnnyWang5784"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <i className="fa-brands fa-x-twitter mt-1"></i>
             </Link>
           </div>
@@ -116,20 +140,26 @@ function Header() {
             {!user ? (
               <div className="navbar-item">
                 <div className="buttons">
-                  <Link to="/register" className="button is-light is-small">Register</Link>
-                  <Link to="/login" className="button is-dark is-small">Login</Link>
+                  <Link to="/register" className="button is-light is-small">
+                    Register
+                  </Link>
+                  <Link to="/login" className="button is-dark is-small">
+                    Login
+                  </Link>
                 </div>
               </div>
             ) : (
               <div className="navbar-item">
                 <div className="buttons">
-                  {user.role === 'user' ? (
+                  {user.role === "user" ? (
                     <>
-                      <Link to="/contact" className="button is-small is-light">Contact</Link>
+                      <Link to="/contact" className="button is-small is-light">
+                        Contact
+                      </Link>
                       <Link
                         to="/my-messages"
-                        className={`button is-small is-dark ${unread > 0 ? 'pulse-animation' : ''}`}
-                        style={{ position: 'relative' }}
+                        className={`button is-small is-dark ${unread > 0 ? "pulse-animation" : ""}`}
+                        style={{ position: "relative" }}
                       >
                         My Messages
                         {unread > 0 && <span className="badge">{unread}</span>}
@@ -138,22 +168,39 @@ function Header() {
                   ) : (
                     <Link
                       to="/admin/messages"
-                      className={`button is-small is-dark ${unread > 0 ? 'pulse-animation' : ''}`}
+                      className={`button is-small is-dark ${unread > 0 ? "pulse-animation" : ""}`}
                     >
                       View Messages
                       {unread > 0 && <span className="badge">{unread}</span>}
                     </Link>
                   )}
 
-                  {user.role === 'admin' && (
+                  {user.role === "admin" && (
                     <>
-                      <Link to="/admin/song" className="button is-small is-light">Update Music</Link>
-                      <Link to="/create-post" className="button is-dark is-small">Create Post</Link>
+                      <Link
+                        to="/admin/song"
+                        className="button is-small is-light"
+                      >
+                        Update Music
+                      </Link>
+                      <Link
+                        to="/create-post"
+                        className="button is-dark is-small"
+                      >
+                        Create Post
+                      </Link>
                     </>
                   )}
 
-                  <Link to="/profile" className="button is-light is-small">{user.username}</Link>
-                  <button className="button is-dark is-small" onClick={handleLogout}>Logout</button>
+                  <Link to="/profile" className="button is-light is-small">
+                    {user.username}
+                  </Link>
+                  <button
+                    className="button is-dark is-small"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
                 </div>
               </div>
             )}
@@ -162,6 +209,6 @@ function Header() {
       </div>
     </nav>
   );
-};
+}
 
-export default Header
+export default Header;

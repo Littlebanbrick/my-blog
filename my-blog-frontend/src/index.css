@@ -1,4 +1,4 @@
-@import 'github-markdown-css/github-markdown-light.css';
+@import "github-markdown-css/github-markdown-light.css";
 
 body {
   background-color: #f0f0f0;
@@ -23,8 +23,14 @@ body {
   overflow: visible;
 }
 
+#root > section:first-child {
+  flex: 1 0 auto;
+}
+
 .main-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .footer {
@@ -63,7 +69,7 @@ a:hover {
 }
 
 .moment-slide-up {
-  animation: slideUp 1.0s ease-out forwards;
+  animation: slideUp 1s ease-out forwards;
 }
 
 .sticky-sidebar {
@@ -78,13 +84,19 @@ a:hover {
 }
 
 .sticky-sidebar::-webkit-scrollbar {
-  display: none;                  /* Chrome/Safari */
+  display: none; /* Chrome/Safari */
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .pulse-animation {
@@ -117,8 +129,14 @@ a:hover {
 }
 
 @media (max-width: 768px) {
-  .archives-columns {
-    column-count: 1;
+  .sticky-sidebar {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+  .columns {
+    flex-direction: column;
   }
 }
 
@@ -140,7 +158,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-family: "Cascadia Code", "Fira Code", monospace;
   z-index: 1000;
   overflow: hidden;
 }
@@ -152,8 +170,9 @@ a:hover {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
 }
@@ -173,9 +192,15 @@ a:hover {
   height: 12px;
   border-radius: 50%;
 }
-#cli-circle1 { background: #ff5f56; }
-#cli-circle2 { background: #ffbd2e; }
-#cli-circle3 { background: #27c93f; }
+#cli-circle1 {
+  background: #ff5f56;
+}
+#cli-circle2 {
+  background: #ffbd2e;
+}
+#cli-circle3 {
+  background: #27c93f;
+}
 
 /* 终端窗口 */
 .cli-terminal {
@@ -183,13 +208,13 @@ a:hover {
   max-width: 1000px;
   height: 95vh;
   margin: 0 auto;
-  background: rgba(10,10,10,0.95);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(10, 10, 10, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 0 30px rgba(0,255,0,0.05);
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.05);
 }
 
 /* 窗口按钮栏 */
@@ -197,16 +222,22 @@ a:hover {
   padding: 0.75rem 1rem;
   display: flex;
   gap: 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 .cli-dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
 }
-.cli-dot-red    { background: #ff5f56; }
-.cli-dot-yellow { background: #ffbd2e; }
-.cli-dot-green  { background: #27c93f; }
+.cli-dot-red {
+  background: #ff5f56;
+}
+.cli-dot-yellow {
+  background: #ffbd2e;
+}
+.cli-dot-green {
+  background: #27c93f;
+}
 
 /* 可滚动内容 */
 .cli-terminal-content {
@@ -221,20 +252,29 @@ a:hover {
 }
 
 /* 隐藏滚动条 */
-.cli-terminal-content::-webkit-scrollbar { display: none; }
-.cli-terminal-content { scrollbar-width: none; }
+.cli-terminal-content::-webkit-scrollbar {
+  display: none;
+}
+.cli-terminal-content {
+  scrollbar-width: none;
+}
 
 /* 输入行样式 */
 .cli-prompt {
   display: flex;
   align-items: center;
   padding: 0.8rem 2rem;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  background: rgba(0,0,0,0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.4);
   font-size: 1.1rem;
 }
-.cli-username { color: #27c93f; }
-.cli-separator { color: #0f0; margin-right: 0.5rem; }
+.cli-username {
+  color: #27c93f;
+}
+.cli-separator {
+  color: #0f0;
+  margin-right: 0.5rem;
+}
 .cli-input-container {
   display: flex;
   align-items: center;
@@ -251,13 +291,22 @@ a:hover {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 /* 输入与输出行的强调 */
-.cli-input-line { color: #0f0; }
-.cli-output-line { color: #aaa; }
+.cli-input-line {
+  color: #0f0;
+}
+.cli-output-line {
+  color: #aaa;
+}
 
 /* 修复 APlayer 卡片布局 */
 .card.widget .aplayer {
@@ -288,7 +337,7 @@ a:hover {
 }
 
 .card .aplayer .aplayer-info {
-  margin-left: 75px !important;   /* 给封面留出空间 */
+  margin-left: 75px !important; /* 给封面留出空间 */
   height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
@@ -402,13 +451,16 @@ html.dark-mode .footer {
   color: #bbb;
 }
 
-/* 标题和一般文字 */
 html.dark-mode .title,
 html.dark-mode .subtitle,
-html.dark-mode h1, h2, h3, h4, h5, h6 {
+html.dark-mode h1,
+html.dark-mode h2,
+html.dark-mode h3,
+html.dark-mode h4,
+html.dark-mode h5,
+html.dark-mode h6 {
   color: #eee !important;
 }
-
 /* 链接颜色（全局） */
 html.dark-mode a {
   color: #ddd !important;
@@ -470,7 +522,7 @@ html.dark-mode .tag.is-info {
 .content.markdown-body,
 .content.markdown-body * {
   background-color: #ffffff !important;
-  color: #24292e !important;            /* GitHub 标准正文色 */
+  color: #24292e !important; /* GitHub 标准正文色 */
 }
 
 /* 链接单独还原为 GitHub 蓝色 */

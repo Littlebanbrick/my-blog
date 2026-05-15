@@ -1,27 +1,27 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { loginUser, setAuthToken, authFetch } from '../utils';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { loginUser, authFetch } from "../utils";
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 const LoginPage = () => {
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [adminKey, setAdminKey] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [adminKey, setAdminKey] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    setError('');
+    setError("");
     try {
       setLoading(true);
       const res = await authFetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await res.json();
@@ -29,24 +29,24 @@ const LoginPage = () => {
         setError(data.msg || "Login failed");
         return;
       }
-      
-      window.location.href = '/';
+
+      window.location.href = "/";
     } catch (err) {
-      setError('Network error. Please try again later.');
+      setError("Network error. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdminLogin = async () => {
-    setError('');
+    setError("");
     setLoading(true);
     try {
       const response = await authFetch(`${API_BASE}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ admin_key: adminKey })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ admin_key: adminKey }),
       });
 
       if (!response.ok) {
@@ -54,7 +54,9 @@ const LoginPage = () => {
         try {
           errorData = await response.json();
         } catch (parseErr) {
-          setError(`Login failed (${response.status}): Invalid response format`);
+          setError(
+            `Login failed (${response.status}): Invalid response format`,
+          );
           return;
         }
         setError(errorData.detail || `Admin login failed (${response.status})`);
@@ -62,22 +64,22 @@ const LoginPage = () => {
       }
 
       // 登录成功，后端已设置 httpOnly cookie，前端无需存 token
-      window.location.href = '/';
+      window.location.href = "/";
     } catch (err) {
-      setError('Network error. Please try again later.');
+      setError("Network error. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container" style={{ paddingTop: '120px' }}>
+    <div className="container" style={{ paddingTop: "120px" }}>
       <div className="columns is-centered">
         <div className="column is-4">
           <div className="card">
             <div className="card-content">
               <h2 className="menu-label mb-3 is-size-4 has-text-centered">
-                {isAdminMode ? 'Admin Login' : 'User Login'}
+                {isAdminMode ? "Admin Login" : "User Login"}
               </h2>
 
               {!isAdminMode && (
@@ -109,14 +111,18 @@ const LoginPage = () => {
                   </div>
 
                   <div className="mt-3">
-                    <button 
-                      className="button is-dark is-fullwidth" 
+                    <button
+                      className="button is-dark is-fullwidth"
                       onClick={handleLogin}
                       disabled={loading}
                     >
-                      {loading ? 'Logging in...' : 'Login'}
+                      {loading ? "Logging in..." : "Login"}
                     </button>
-                    {error && <p className="has-text-danger has-text-centered mt-2">{error}</p>}
+                    {error && (
+                      <p className="has-text-danger has-text-centered mt-2">
+                        {error}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -139,13 +145,17 @@ const LoginPage = () => {
                   <div className="mt-3">
                     <button
                       className="button is-fullwidth"
-                      style={{ backgroundColor: '#8B0000', color: 'white' }}
+                      style={{ backgroundColor: "#8B0000", color: "white" }}
                       onClick={handleAdminLogin}
                       disabled={loading}
                     >
                       Admin Login
                     </button>
-                    {error && <p className="has-text-danger has-text-centered mt-2">{error}</p>}
+                    {error && (
+                      <p className="has-text-danger has-text-centered mt-2">
+                        {error}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -155,14 +165,19 @@ const LoginPage = () => {
                   className="button is-text is-small has-text-grey"
                   onClick={() => {
                     setIsAdminMode(!isAdminMode);
-                    setError('');
+                    setError("");
                   }}
                 >
-                  {isAdminMode ? 'Back to User Login' : 'Admin Login? Click here'}
+                  {isAdminMode
+                    ? "Back to User Login"
+                    : "Admin Login? Click here"}
                 </button>
 
                 {!isAdminMode && (
-                  <a href="/register" className="button is-text is-small has-text-grey">
+                  <a
+                    href="/register"
+                    className="button is-text is-small has-text-grey"
+                  >
                     Create Account
                   </a>
                 )}

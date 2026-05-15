@@ -6,7 +6,7 @@ from fastapi import FastAPI, Body, HTTPException, Depends, status, Request, Resp
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
-from database import database, posts, comments, likes, users, projects_table, post_images, messages,song_config
+from database import database, posts, comments, likes, users, projects_table, post_images, messages, song_config, deepseek_usage
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from sqlalchemy import func, select, and_, desc, or_
 from pydantic import BaseModel, EmailStr
@@ -14,7 +14,12 @@ import os
 import shutil
 import uuid
 import time
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
+from datetime import datetime, timedelta, timezone
+
+dotenv_path = find_dotenv() or '/app/.env'
+load_dotenv(dotenv_path)
+
 import secrets
 import re
 import requests
@@ -25,7 +30,6 @@ from slowapi.errors import RateLimitExceeded
 
 # Email verification
 import yagmail
-import secrets
 
 # Login and registration
 from jose import jwt, JWTError
@@ -37,7 +41,13 @@ import bcrypt
 # Automatically eliminate unverified users
 import asyncio
 
-from github_trending import trending_scheduler, update_trending_post
+# 生成缩略图
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = 89478485  # ~85 MP, prevent decompression bombs
+THUMB_MAX_WIDTH = 600          # 缩略图最大宽度
+THUMB_QUALITY = 75             # JPEG 质量
+
+from github_trending import trending_scheduler, update_trending_post, process_deepseek_reply, process_deepseek_context_reply, ensure_daily_gtt
 
 app = FastAPI()
 
@@ -49,9 +59,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-load_dotenv()
-
-FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost")
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://littlebanbrick.cn")
+if not FRONTEND_BASE_URL:
+    if os.getenv("ENV", "development") == "production":
+        raise ValueError("FRONTEND_BASE_URL must be set in .env for production (e.g. https://littlebanbrick.cn)")
+    FRONTEND_BASE_URL = "http://localhost"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -116,9 +128,11 @@ class NoteUpdate(BaseModel):
 class MessageCreate(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
     anonymous: bool = Body(False)
+    quoted_id: int | None = Body(None)
     
 class MessageReply(BaseModel):
     content: str = Body(..., min_length=1, max_length=1000)
+    quoted_id: int | None = Body(None)
 
 class SongUpdate(BaseModel):
     title: str = Body("")
@@ -264,18 +278,71 @@ def allowed_file(filename):
 def is_strong_password(password: str) -> bool:
     return bool(re.match(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};:\\|,.<>/?]).{8,}$', password))
 
+def create_thumbnail(original_path: str, thumb_path: str):
+    """生成缩略图并保存到 thumb_path"""
+    os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+    try:
+        with Image.open(original_path) as img:
+            # 保持宽高比缩放
+            if img.width > THUMB_MAX_WIDTH:
+                ratio = THUMB_MAX_WIDTH / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((THUMB_MAX_WIDTH, new_height), Image.Resampling.LANCZOS)
+            # 转成 RGB（防止 PNG 透明通道问题），保存为 JPEG 并压缩
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            img.save(thumb_path, 'JPEG', quality=THUMB_QUALITY, optimize=True)
+    except Exception as e:
+        print(f"Thumbnail generation failed for {original_path}: {e}")
+
+def safe_path(base_dir: str, filename: str) -> str:
+    """Resolve file path and ensure it stays within base_dir. Raises HTTPException on escape attempt."""
+    full_path = os.path.realpath(os.path.join(base_dir, filename))
+    real_base = os.path.realpath(base_dir)
+    if not full_path.startswith(real_base + os.sep) and full_path != real_base:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    return full_path
+
 async def verify_csrf(request: Request):
     if request.method == "OPTIONS":
         return
     csrf_cookie = request.cookies.get("csrf_token")
     csrf_header = request.headers.get("X-CSRF-Token")
-    print("=== CSRF DEBUG ===")
-    print("Cookie:", repr(csrf_cookie))
-    print("Header:", repr(csrf_header))
-    print("Equal?", csrf_cookie == csrf_header)
+    # CSRF DEBUG removed for security
+    # CSRF debug lines removed for security
+    # (removed)
+    # (removed)
     if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
         raise HTTPException(status_code=403, detail="CSRF validation failed")
     
+async def check_deepseek_daily_limit(username: str):
+    """检查用户今日 DeepSeek 调用是否超限（每天2次）。返回 (allowed: bool, remaining: int)"""
+    today = beijing_now().strftime("%Y-%m-%d")
+    row = await database.fetch_one(
+        deepseek_usage.select().where(
+            and_(deepseek_usage.c.username == username, deepseek_usage.c.date == today)
+        )
+    )
+    count = row["count"] if row else 0
+    return (count < 2, 2 - count)
+
+async def record_deepseek_usage(username: str):
+    """记录一次 DeepSeek 调用"""
+    today = beijing_now().strftime("%Y-%m-%d")
+    row = await database.fetch_one(
+        deepseek_usage.select().where(
+            and_(deepseek_usage.c.username == username, deepseek_usage.c.date == today)
+        )
+    )
+    if row:
+        await database.execute(
+            deepseek_usage.update().where(deepseek_usage.c.id == row["id"]).values(count=row["count"] + 1)
+        )
+    else:
+        await database.execute(
+            deepseek_usage.insert().values(username=username, date=today, count=1)
+        )
+
 async def cleanup_unverified_users():
     while True:
         await asyncio.sleep(60)  # Check for every minute
@@ -314,6 +381,7 @@ async def startup():
     await database.connect()
     asyncio.create_task(cleanup_unverified_users())
     asyncio.create_task(trending_scheduler())
+    asyncio.create_task(ensure_daily_gtt())
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -396,7 +464,9 @@ async def get_likes(post_id: int):
     return success(data=[{"user_name": row["user_name"], "created_at": row["created_at"]} for row in rows])
 
 @app.post("/api/posts/{post_id}/like")
+@limiter.limit("20/minute")
 async def toggle_like(
+    request: Request,
     post_id: int,
     current_user: TokenData = Depends(get_current_user),
     _=Depends(verify_csrf)
@@ -474,7 +544,9 @@ async def get_comments(
     return success(data=result)
 
 @app.post("/api/posts/{post_id}/comments")
+@limiter.limit("10/minute")
 async def add_comment(
+    request: Request,
     post_id: int,
     req: CommentRequest,
     current_user: TokenData = Depends(get_current_user),
@@ -491,21 +563,52 @@ async def add_comment(
         if parent_comment:
             parent_author = parent_comment["author"]
     
-    query = comments.insert().values(
-        post_id=post_id,
-        author=author,
-        content=req.content,
-        created_at=now,
-        parent_id=req.parent_id,
-        parent_author=parent_author
-    )
-    await database.execute(query)
-
-    await database.execute(
-        posts.update().where(posts.c.id == post_id).values(
-            comment_count=posts.c.comment_count + 1
+    # 1. 在事务中同时插入评论和更新计数，保证原子性
+    async with database.transaction():
+        query = comments.insert().values(
+            post_id=post_id,
+            author=author,
+            content=req.content,
+            created_at=now,
+            parent_id=req.parent_id,
+            parent_author=parent_author
         )
+        user_comment_id = await database.execute(query)
+        
+        await database.execute(
+            posts.update().where(posts.c.id == post_id).values(
+                comment_count=posts.c.comment_count + 1
+            )
+        )
+    
+    # 2. 事务提交成功后，检查是否触发 DeepSeek 自动回复
+    post_row = await database.fetch_one(
+        posts.select().where(posts.c.id == post_id)
     )
+    if post_row and post_row["title"] == "🤖 GitHub Trending Today":
+        content_lower = req.content.strip().lower()
+        if content_lower.startswith("@deepseek"):
+            # 非管理员用户检查 DeepSeek 每日调用配额（每天2次）
+            if current_user.role != "admin":
+                allowed, remaining = await check_deepseek_daily_limit(author)
+                if not allowed:
+                    return success(msg="Comment added. DeepSeek daily limit (2/day) reached.")
+                await record_deepseek_usage(author)
+            
+            if content_lower.startswith("@deepseek-context"):
+                asyncio.create_task(process_deepseek_context_reply(
+                    post_id=post_id,
+                    parent_comment_id=user_comment_id,
+                    user_question=req.content,
+                    asker_name=author
+                ))
+            else:
+                asyncio.create_task(process_deepseek_reply(
+                    post_id=post_id,
+                    parent_comment_id=user_comment_id,
+                    user_question=req.content,
+                    asker_name=author
+                ))
     
     return success(msg="Comment added")
 
@@ -544,24 +647,26 @@ async def admin_delete_post(
     return success(data={"deleted_post_id": post_id})
 
 @app.post("/api/register")
-async def register(user: UserRegister):
+@limiter.limit("10/hour")
+async def register(request: Request, user: UserRegister):
     try:
-        # Truncate the password to 72 characters to prevent bcrypt issues
-        user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
+        # Truncate password to 72 bytes, preserving complete UTF-8 characters
+        while len(user.password.encode("utf-8")) > 72:
+            user.password = user.password[:-1]
         
         username_exists = await database.fetch_one(users.select().where(users.c.username == user.username))
-        if user.username.lower().strip() == 'anonymous':
-            return {"code": 400, "msg": "Username cannot be 'Anonymous'"}
+        if user.username.lower().strip() in ['anonymous', 'deepseek']:
+            return {"code": 400, "msg": "Such username is invalid!'"}
         
         if username_exists:
-            return {"code": 400, "msg": "Username already exists"}
+            return {"code": 400, "msg": "Registration failed. Please check your input."}
 
         email_exists = await database.fetch_one(users.select().where(users.c.email == user.email))
         if email_exists:
-            return {"code": 400, "msg": "Email already exists"}
+            return {"code": 400, "msg": "Registration failed. Please check your input."}
 
         if not is_strong_password(user.password):
-            return {"code": 400, "msg": "Password is too weak"}
+            return {"code": 400, "msg": "Password must be 8+ characters with uppercase, lowercase, number, and special character"}
 
         hashed_pw = get_password_hash(user.password)
         verify_token = secrets.token_urlsafe(32)
@@ -581,7 +686,7 @@ async def register(user: UserRegister):
 
         try:
             send_verify_email(user.email, verify_token)
-        except:
+        except Exception:
             return {"code": 200, "msg": "Registered, but failed to send verification email"}
 
         return {"code": 200, "msg": "Registered successfully, please verify your email"}
@@ -592,9 +697,13 @@ async def register(user: UserRegister):
         return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
 @app.get("/api/verify-email")
-async def verify_email(token: str):
+@limiter.limit("20/minute")
+async def verify_email(request: Request, token: str):
     try:
-        user = await database.fetch_one(users.select().where(users.c.verify_token == token))
+        user = await asyncio.wait_for(
+            database.fetch_one(users.select().where(users.c.verify_token == token)),
+            timeout=8.0
+        )
         if not user:
             return {"code": 400, "msg": "Invalid or expired token"}
 
@@ -607,14 +716,19 @@ async def verify_email(token: str):
         if beijing_now() > expire_time:
             return {"code": 400, "msg": "Verification link expired (15min)"}
 
-        await database.execute(
-            users.update()
+        await asyncio.wait_for(
+            database.execute(
+                users.update()
                 .where(users.c.verify_token == token)
                 .values(is_verified=1, verify_token=None, verify_token_expire=None)
+            ),
+            timeout=8.0
         )
 
         return {"code": 200, "msg": "Email verified successfully!"}
 
+    except asyncio.TimeoutError:
+        return {"code": 500, "msg": "Server busy, please try again"}
     except Exception as e:
         print("Verification error:", repr(e))
         return {"code": 500, "msg": str(e)}
@@ -623,7 +737,9 @@ async def verify_email(token: str):
 @limiter.limit("5/15min")
 async def login(user: UserLogin, response: Response, request: Request):
     try:
-        user.password = user.password.encode("utf-8")[:72].decode("utf-8", "ignore")
+        # Truncate password to 72 bytes, preserving complete UTF-8 characters
+        while len(user.password.encode("utf-8")) > 72:
+            user.password = user.password[:-1]
         
         query = users.select().where(users.c.username == user.username)
         row = await database.fetch_one(query)
@@ -657,6 +773,7 @@ async def login(user: UserLogin, response: Response, request: Request):
             httponly=False,
             secure=secure_flag,
             samesite="Lax",
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
             path="/"
         )
 
@@ -673,7 +790,8 @@ async def login(user: UserLogin, response: Response, request: Request):
         return {"code": 500, "msg": f"Internal server error: {str(e)}"}
 
 @app.post("/api/admin/login")
-async def admin_login(admin: AdminLogin, response: Response):
+@limiter.limit("5/15min")
+async def admin_login(request: Request, admin: AdminLogin, response: Response):
     try:
         if admin.admin_key != ADMIN_SECRET_KEY:
             raise HTTPException(status_code=403, detail="Invalid admin key")
@@ -686,7 +804,7 @@ async def admin_login(admin: AdminLogin, response: Response):
 
         token = create_access_token(
             data={"sub": admin_user["username"], "role": "admin"},
-            expires_delta=timedelta(hours=1)
+            expires_delta=timedelta(hours=24 * 7)
         )
 
         secure_flag = os.getenv("ENV", "development") == "production"
@@ -697,7 +815,7 @@ async def admin_login(admin: AdminLogin, response: Response):
             httponly=True,
             secure=secure_flag,
             samesite="Lax",
-            max_age=60 * 60 * 10,
+            max_age=60 * 60 * 24 * 7,
             path="/"
         )
 
@@ -708,6 +826,7 @@ async def admin_login(admin: AdminLogin, response: Response):
             httponly=False,
             secure=secure_flag,
             samesite="Lax",
+            max_age=60 * 60 * 10,
             path="/"
         )
 
@@ -733,12 +852,111 @@ async def logout(response: Response):
 async def me(current_user: TokenData = Depends(get_current_user)):
     return success(data={"username": current_user.username, "role": current_user.role})
 
-@app.get("/api/auth/check")
-async def check_verify(username: str):
-    user = await database.fetch_one(users.select().where(users.c.username == username))
-    if not user:
-        return {"code": 404, "is_verified": False}
-    return {"code": 200, "is_verified": user["is_verified"]}
+#用户更名系统
+class UsernameUpdate(BaseModel):
+    new_username: str = Body(..., min_length=3, max_length=50)
+
+@app.put("/api/user/username")
+async def change_username(
+    response: Response,
+    req: UsernameUpdate,
+    current_user: TokenData = Depends(get_current_user),
+    _=Depends(verify_csrf)
+):
+    # 1. 检查新用户名合法性
+    new_username = req.new_username.strip()
+    if len(new_username) < 3 or len(new_username) > 50:
+        return fail("Username must be 3-50 characters", 400)
+    if new_username.lower() in ['anonymous', 'deepseek', 'admin']:
+        return fail("This username is not allowed", 400)
+    if not re.match(r'^[a-zA-Z0-9_]+$', new_username):
+        return fail("Username can only contain letters, numbers and underscores", 400)
+    if new_username == current_user.username:
+        return fail("New username is the same as the current one. No change needed.", 400)
+
+    # 2. 检查是否已存在
+    existing = await database.fetch_one(users.select().where(users.c.username == new_username))
+    if existing:
+        return fail("Username already taken", 400)
+
+    # 3. 获取当前用户信息，检查上次修改时间
+    user_row = await database.fetch_one(users.select().where(users.c.username == current_user.username))
+    if not user_row:
+        return fail("User not found", 404)
+
+    last_change_str = user_row.get("last_username_change")
+    if last_change_str:
+        try:
+            last_change = datetime.strptime(last_change_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=8)))
+            days_since = (beijing_now() - last_change).days
+            if days_since < 30:
+                return fail(f"You can only change username once every 30 days. {30 - days_since} days remaining.", 400)
+        except:
+            pass  # 如果格式错误，当作从未修改过
+
+    # 4. 开始事务，更新所有相关表
+    now_str = get_current_time()
+    async with database.transaction():
+        # 更新 users 表
+        await database.execute(
+            users.update()
+            .where(users.c.username == current_user.username)
+            .values(username=new_username, last_username_change=now_str)
+        )
+
+        # 更新 likes 表
+        await database.execute(
+            likes.update().where(likes.c.user_name == current_user.username).values(user_name=new_username)
+        )
+        # 更新 comments 表
+        await database.execute(
+            comments.update().where(comments.c.author == current_user.username).values(author=new_username)
+        )
+        # 同时更新 parent_author 字段（被回复的作者名）
+        await database.execute(
+            comments.update().where(comments.c.parent_author == current_user.username).values(parent_author=new_username)
+        )
+        # 更新 messages 表的发送者
+        await database.execute(
+            messages.update().where(messages.c.sender_username == current_user.username).values(sender_username=new_username)
+        )
+        # 更新 deepseek_usage 表
+        await database.execute(
+            deepseek_usage.update().where(deepseek_usage.c.username == current_user.username).values(username=new_username)
+        )
+
+    # 5. 生成新的 token 和 csrf_token，替换旧 cookie
+    access_token = create_access_token(
+        data={"sub": new_username, "role": user_row["role"]},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    csrf_token = secrets.token_hex(32)
+    secure_flag = os.getenv("ENV", "development") == "production"
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=secure_flag,
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=secure_flag,
+        samesite="Lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/"
+    )
+
+    return success(data={
+        "username": new_username,
+        "access_token": access_token,
+        "csrf_token": csrf_token
+    }, msg="Username updated successfully. Please refresh the page.")
 
 @app.get("/wait-verification")
 async def wait_verification():
@@ -762,7 +980,7 @@ async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
         "username": user["username"],
         "email": user["email"],
         "role": user["role"],
-        "is_verified": user["is_verified"]
+        "is_verified": bool(user["is_verified"])
     })
     
 @app.delete("/api/user/delete")
@@ -799,8 +1017,22 @@ async def delete_user(current_user: TokenData = Depends(get_current_user), _=Dep
             )
         # 删除评论记录
         await database.execute(comments.delete().where(comments.c.author == current_user.username))
+        
+        # 3. 删除该用户的所有留言会话（包括管理员回复）
+        user_roots = await database.fetch_all(
+            messages.select().where(
+                and_(
+                    messages.c.sender_username == current_user.username,
+                    messages.c.parent_id == None
+                )
+            )
+        )
+        for root in user_roots:
+            root_id = root["id"]
+            await database.execute(messages.delete().where(messages.c.root_id == root_id))
+            await database.execute(messages.delete().where(messages.c.id == root_id))
 
-        # 3. 删除用户
+        # 4. 删除用户
         await database.execute(users.delete().where(users.c.username == current_user.username))
 
     response = JSONResponse(content=success(msg="Account deleted successfully"))
@@ -852,11 +1084,16 @@ async def upload_photo(
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
     timestamp = str(int(time.time() * 1000))
-    safe_name = f"{timestamp}_{file.filename}"
+    safe_name = f"{timestamp}_{os.path.basename(file.filename)}"
     file_path = os.path.join(PHOTOS_DIR, safe_name)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+        
+    # 生成缩略图
+    thumb_dir = os.path.join(PHOTOS_DIR, "thumbs")
+    thumb_path = os.path.join(thumb_dir, safe_name)
+    create_thumbnail(file_path, thumb_path)
 
     url = f"/photos/{safe_name}"
     return success(data={"url": url})
@@ -882,7 +1119,7 @@ async def delete_photo(
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    file_path = os.path.join(PHOTOS_DIR, filename)
+    file_path = safe_path(PHOTOS_DIR, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
         return success(msg="Deleted")
@@ -891,6 +1128,8 @@ async def delete_photo(
     
 @app.get("/api/notes")
 async def list_notes():
+    beijing_tz = timezone(timedelta(hours=8))
+    
     if not os.path.exists(NOTES_DIR):
         return success(data=[])
     files = os.listdir(NOTES_DIR)
@@ -911,7 +1150,7 @@ async def list_notes():
                 'title': title,
                 'summary': summary,
                 'filename': f,
-                'updated_at': datetime.fromtimestamp(os.path.getmtime(path)).strftime("%Y-%m-%d %H:%M:%S")
+                'updated_at': datetime.fromtimestamp(os.path.getmtime(path), tz=beijing_tz).strftime("%Y-%m-%d %H:%M:%S")
             })
     notes_list.sort(key=lambda x: x['updated_at'], reverse=True)
     return success(data=notes_list)
@@ -919,7 +1158,7 @@ async def list_notes():
 @app.get("/api/notes/{note_id}")
 async def get_note(note_id: str):
     filename = note_id + '.md'
-    path = os.path.join(NOTES_DIR, filename)
+    path = safe_path(NOTES_DIR, filename)
     if not os.path.exists(path):
         return fail(msg="Note not found", code=404)
     with open(path, 'r', encoding='utf-8') as fp:
@@ -941,10 +1180,10 @@ async def create_note(note: NoteCreate,
     base = re.sub(r'[^\w\s-]', '', note.title).strip()
     base = re.sub(r'[-\s]+', '-', base)[:50]
     filename = base + '.md'
-    path = os.path.join(NOTES_DIR, filename)
+    path = safe_path(NOTES_DIR, filename)
     if os.path.exists(path):
         filename = f"{base}-{uuid.uuid4().hex[:6]}.md"
-        path = os.path.join(NOTES_DIR, filename)
+        path = safe_path(NOTES_DIR, filename)
     with open(path, 'w', encoding='utf-8') as fp:
         fp.write(note.content)
     note_id = filename.replace('.md', '')
@@ -959,14 +1198,14 @@ async def update_note(note_id: str,
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     old_file = note_id + '.md'
-    old_path = os.path.join(NOTES_DIR, old_file)
+    old_path = safe_path(NOTES_DIR, old_file)
     if not os.path.exists(old_path):
         return fail(msg="Note not found", code=404)
 
     new_base = re.sub(r'[^\w\s-]', '', note.title).strip()
     new_base = re.sub(r'[-\s]+', '-', new_base)[:50]
     new_file = new_base + '.md'
-    new_path = os.path.join(NOTES_DIR, new_file)
+    new_path = safe_path(NOTES_DIR, new_file)
 
     if old_file != new_file and not os.path.exists(new_path):
         os.rename(old_path, new_path)
@@ -988,7 +1227,7 @@ async def delete_note(note_id: str,
 ):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    path = os.path.join(NOTES_DIR, note_id + '.md')
+    path = safe_path(NOTES_DIR, note_id + '.md')
     if os.path.exists(path):
         os.remove(path)
         return success(msg="Deleted")
@@ -1069,6 +1308,11 @@ async def upload_post_image(
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+            
+        # 生成缩略图
+        thumb_dir = os.path.join(POST_IMAGES_DIR, "thumbs")
+        thumb_path = os.path.join(thumb_dir, safe_name)
+        create_thumbnail(file_path, thumb_path)
 
         url = f"/static/uploads/posts/{safe_name}"
         return success(data={"url": url})
@@ -1077,7 +1321,9 @@ async def upload_post_image(
         raise HTTPException(status_code=500, detail="Internal server error")
     
 @app.post("/api/messages")
+@limiter.limit("5/minute")
 async def send_message(
+    request: Request,
     req: MessageCreate,
     current_user: TokenData = Depends(get_current_user),
     _=Depends(verify_csrf)
@@ -1088,6 +1334,7 @@ async def send_message(
         sender_username=sender,
         content=req.content,
         created_at=now,
+        quoted_id=req.quoted_id,
         is_read=0
     )
     await database.execute(query)
@@ -1169,7 +1416,9 @@ async def unread_count(current_user: TokenData = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     count = await database.fetch_val(
-        select(func.count()).select_from(messages).where(messages.c.is_read == 0)
+        select(func.count()).select_from(messages).where(
+            and_(messages.c.is_read == 0, messages.c.sender_username != current_user.username)
+        )
     )
     return success(data={"unread": count})
 
@@ -1222,7 +1471,8 @@ async def reply_message(
         created_at=now,
         is_read=0,
         parent_id=message_id,
-        root_id=root_id
+        root_id=root_id,
+        quoted_id=req.quoted_id
     )
     await database.execute(query)
     
@@ -1257,22 +1507,45 @@ async def user_reply(
         created_at=now,
         is_read=0,
         parent_id=message_id,
-        root_id=root_id
+        root_id=root_id,
+        quoted_id=req.quoted_id
     )
     await database.execute(query)
     return success(msg="Reply sent")
 
 @app.get("/api/admin/messages/{root_id}/conversation")
-async def get_conversation(
+async def admin_get_conversation(
     root_id: int,
-    current_user: TokenData = Depends(get_current_user)):
+    current_user: TokenData = Depends(get_current_user),
+):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    
     query = messages.select().where(
         or_(messages.c.id == root_id, messages.c.root_id == root_id)
     ).order_by(messages.c.created_at.asc())
     rows = await database.fetch_all(query)
-    return success(data=[dict(row) for row in rows])
+    msgs = [dict(row) for row in rows]
+
+    # 收集所有被引用的消息 ID
+    quoted_ids = set()
+    for m in msgs:
+        if m.get("quoted_id"):
+            quoted_ids.add(m["quoted_id"])
+    
+    # 批量查询被引用消息的内容
+    quoted_content_map = {}
+    if quoted_ids:
+        quoted_rows = await database.fetch_all(
+            messages.select().where(messages.c.id.in_(quoted_ids))
+        )
+        quoted_content_map = {r["id"]: r["content"] for r in quoted_rows}
+    
+    # 附加 quoted_content 字段
+    for m in msgs:
+        m["quoted_content"] = quoted_content_map.get(m.get("quoted_id"), "") if m.get("quoted_id") else ""
+    
+    return success(data=msgs)
 
 # For the users. Relevant msgs only.
 @app.get("/api/messages/my")
@@ -1307,7 +1580,6 @@ async def get_conversation(
     root = await database.fetch_one(messages.select().where(messages.c.id == root_id))
     if not root:
         return fail(msg="Conversation not found", code=404)
-    # 权限检查：管理员可看所有，用户只能看自己参与的
     if current_user.role != "admin" and current_user.username != root["sender_username"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
@@ -1315,7 +1587,27 @@ async def get_conversation(
         or_(messages.c.id == root_id, messages.c.root_id == root_id)
     ).order_by(messages.c.created_at.asc())
     rows = await database.fetch_all(query)
-    return success(data=[dict(row) for row in rows])
+    msgs = [dict(row) for row in rows]
+
+    # 收集所有被引用的消息 ID
+    quoted_ids = set()
+    for m in msgs:
+        if m.get("quoted_id"):
+            quoted_ids.add(m["quoted_id"])
+    
+    # 批量查询被引用消息的内容
+    quoted_content_map = {}
+    if quoted_ids:
+        quoted_rows = await database.fetch_all(
+            messages.select().where(messages.c.id.in_(quoted_ids))
+        )
+        quoted_content_map = {r["id"]: r["content"] for r in quoted_rows}
+    
+    # 附加 quoted_content 字段
+    for m in msgs:
+        m["quoted_content"] = quoted_content_map.get(m.get("quoted_id"), "") if m.get("quoted_id") else ""
+    
+    return success(data=msgs)
 
 @app.delete("/api/admin/messages/{message_id}")
 async def delete_message(message_id: int, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
@@ -1341,7 +1633,7 @@ async def get_song():
     })
 
 @app.put("/api/admin/song")
-async def set_song(req: SongUpdate, current_user: TokenData = Depends(get_current_user)):
+async def set_song(req: SongUpdate, current_user: TokenData = Depends(get_current_user), _=Depends(verify_csrf)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     await database.execute(song_config.delete())
