@@ -979,12 +979,13 @@ async def get_user_profile(current_user: TokenData = Depends(get_current_user)):
             "last_username_change": None
         })
     user = await database.fetch_one(users.select().where(users.c.username == current_user.username))
+    user_dict = dict(user)  # 转为普通字典
     return success(data={
-        "username": user["username"],
-        "email": user["email"],
-        "role": user["role"],
-        "is_verified": bool(user["is_verified"]),
-        "last_username_change": user.get("last_username_change")
+        "username": user_dict["username"],
+        "email": user_dict["email"],
+        "role": user_dict["role"],
+        "is_verified": bool(user_dict["is_verified"]),
+        "last_username_change": user_dict.get("last_username_change")
     })
     
 @app.delete("/api/user/delete")
