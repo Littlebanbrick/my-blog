@@ -140,7 +140,7 @@ function MomentList() {
     <>
       {/* 移动端响应式样式：时间一行，点赞/评论/字数下一行 */}
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1023px) {
           .moment-meta-wrapper {
             display: flex;
             flex-direction: column;

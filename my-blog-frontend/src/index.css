@@ -128,7 +128,7 @@ a:hover {
   display: block;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .sticky-sidebar {
     position: static !important;
     top: auto !important;

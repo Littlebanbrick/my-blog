@@ -74,7 +74,7 @@ function NotePage() {
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1023px) {
           .note-body {
             max-width: 100% !important;
             margin-left: 0 !important;
