@@ -150,9 +150,6 @@ function ProfilePage() {
                     >
                       Change Username
                     </button>
-                    <p className="help has-text-centered mb-3">
-                      Available in {remainingDays} day{remainingDays !== 1 ? "s" : ""}
-                    </p>
                   </div>
                 ) : (
                   <button
