@@ -31,7 +31,7 @@ function LinksPage() {
             {
               name: "Hubery",
               avatar: "https://s41.ax1x.com/2026/03/14/peEfnTx.jpg",
-              url: "https://hubery258.github.io/",
+              url: "https://blog.ramenboy.cc/",
               description: "千早爱音的狗",
             },
           ],
