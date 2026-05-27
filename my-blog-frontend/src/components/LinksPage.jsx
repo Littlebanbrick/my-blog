@@ -11,8 +11,8 @@ function LinksPage() {
       setLoading(true);
       const profileData = {
         avatar: "/myAvatar.jpg",
-        name: "Johnny Wang",
-        bio: "A freshman majoring in CS from Zhejiang Univ. - Curious, consistent, and always building",
+        name: "KCChiaki",
+        bio: "Elahz izob tuia suiee.",
       };
       setProfile(profileData);
 
@@ -20,19 +20,31 @@ function LinksPage() {
         {
           id: 1,
           title: "Friends",
-          description: "My best buddies in tech and life.",
+          description: "My best friends in my life.",
           links: [
             {
-              name: "Augrottos",
-              avatar: "https://avatars.githubusercontent.com/u/268848168?v=4",
-              url: "https://github.com/Augrottos",
-              description: "Elahz izob tuia suiee.",
+              name: "LittleBANBrick",
+              avatar: "https://littlebanbrick.cn/myAvatar.jpg",
+              url: "https://littlebanbrick.cn/",
+              description: "深圳吴彦祖",
             },
             {
-              name: "Hubery",
-              avatar: "https://s41.ax1x.com/2026/03/14/peEfnTx.jpg",
-              url: "https://blog.ramenboy.cc/",
-              description: "千早爱音的狗",
+              name: "M155.b1nb1n",
+              avatar: "https://m155-b1nb1n.github.io/binbin-blog/img/tx.jpg",
+              url: "https://m155-b1nb1n.github.io/binbin-blog/",
+              description: "我乃 彬彬大王！",
+            },
+            {
+              name: "roxy",
+              avatar: "https://roxy5201314.github.io/img/666.jpg",
+              url: "https://roxy5201314.github.io/",
+              description: "一只爱打pwn的小福瑞",
+            },
+            {
+              name: "Hachiwa0",
+              avatar: "https://chii.cloud/wp-content/uploads/2026/03/cropped-cropped-13583802-scaled-3.jpg",
+              url: "https://chii.cloud/",
+              description: "The sun rises and summer approaches",
             },
           ],
         },
@@ -49,16 +61,15 @@ function LinksPage() {
     fetchData();
   }, []);
 
-  // 跑马灯组件：动态检测溢出，仅在需要时添加副本
-  const MarqueeText = ({ text, className }) => {
+  // 跑马灯组件：只增加空白，其他逻辑保持不变
+  const MarqueeText = ({ text }) => {
     const containerRef = useRef(null);
-    const wrapperRef = useRef(null);
     const [needsScroll, setNeedsScroll] = useState(false);
 
     useEffect(() => {
       const check = () => {
-        if (wrapperRef.current && containerRef.current) {
-          setNeedsScroll(wrapperRef.current.scrollWidth > containerRef.current.clientWidth);
+        if (containerRef.current) {
+          setNeedsScroll(containerRef.current.scrollWidth > containerRef.current.clientWidth);
         }
       };
       check();
@@ -69,24 +80,16 @@ function LinksPage() {
     return (
       <div
         ref={containerRef}
+        className={`marquee-container ${needsScroll ? "needs-scroll" : ""}`}
         style={{
           overflow: "hidden",
           whiteSpace: "nowrap",
-          width: "100%",
+          textOverflow: "ellipsis",
         }}
       >
-        <div
-          ref={wrapperRef}
-          style={{
-            display: "inline-block",
-            whiteSpace: "nowrap",
-            animation: needsScroll ? "marquee 15s linear infinite" : "none",
-          }}
-        >
-          {/* 基本内容：文本 + 空白间隔 */}
+        <div className="marquee-content" style={{ display: "inline-block" }}>
           <span>{text}</span>
           <span style={{ display: "inline-block", width: "2rem" }}>&nbsp;</span>
-          {/* 需要滚动时才添加第二份副本，实现无缝双内容 */}
           {needsScroll && (
             <>
               <span>{text}</span>
@@ -94,15 +97,6 @@ function LinksPage() {
             </>
           )}
         </div>
-        <style>{`
-          @keyframes marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-          }
-          div[style*="animation"]:hover {
-            animation-play-state: paused;
-          }
-        `}</style>
       </div>
     );
   };
@@ -117,7 +111,6 @@ function LinksPage() {
         <div className="container">
           <h1 className="title is-2">Friends & Links</h1>
 
-          {/* 个人信息卡片 */}
           {profile && (
             <div className="card mb-5">
               <div className="card-content">
@@ -140,8 +133,7 @@ function LinksPage() {
             </div>
           )}
 
-          {/* 友链分组（只渲染有链接的分组） */}
-          {friendGroups.filter((g) => g.links.length > 0).map((group) => (
+          {friendGroups.filter(g => g.links.length > 0).map((group) => (
             <div key={group.id} className="card mb-5">
               <div className="card-content">
                 <h2 className="title is-4 has-text-dark" style={{ marginBottom: "0.5rem" }}>
@@ -186,6 +178,34 @@ function LinksPage() {
           ))}
         </div>
       </section>
+
+      <style>{`
+        .marquee-container {
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          line-height: 1.6;
+          padding-bottom: 2px;
+        }
+        .marquee-container .marquee-content {
+          display: inline-block;
+          white-space: nowrap;
+        }
+        .marquee-container.needs-scroll:hover .marquee-content {
+          animation: marquee 8s linear infinite;
+        }
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .marquee-container.needs-scroll .marquee-clone {
+          display: inline-block;
+          padding-left: 2rem;
+        }
+        .marquee-container:not(.needs-scroll) .marquee-clone {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 }

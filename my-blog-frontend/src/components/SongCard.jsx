@@ -65,52 +65,70 @@ function SongCard() {
         outer.style.overflow = 'hidden';
         outer.style.whiteSpace = 'nowrap';
         outer.style.width = '100%';
-        outer.style.lineHeight = '1.8';       // 增加行高，防止文字被裁剪
-        outer.style.paddingTop = '2px';       // 可选，增加顶部内边距
-        outer.style.paddingBottom = '2px';    // 可选，增加底部内边距
+        outer.style.lineHeight = '1.8';
+        outer.style.paddingTop = '2px';
+        outer.style.paddingBottom = '2px';
         outer.style.marginTop = '-8px';
 
-        // 内容包装器（总宽度为单份内容的两倍）
+        // 内容包装器（初始只有单份）
         const wrapper = document.createElement('div');
         wrapper.style.display = 'inline-block';
         wrapper.style.whiteSpace = 'nowrap';
 
-        // 构建两份内容：文本 + 空白
-        const buildSegment = () => {
-          const textSpan = document.createElement('span');
-          textSpan.innerText = fullText;
-          const gapSpan = document.createElement('span');
-          gapSpan.style.display = 'inline-block';
-          gapSpan.style.width = gapWidth;
-          gapSpan.innerHTML = '&nbsp;';
-          return [textSpan, gapSpan];
-        };
-
-        const [text1, gap1] = buildSegment();
-        const [text2, gap2] = buildSegment();
-        wrapper.appendChild(text1);
-        wrapper.appendChild(gap1);
-        wrapper.appendChild(text2);
-        wrapper.appendChild(gap2);
+        // 构建单份内容（文本 + 空白）
+        const textSpan = document.createElement('span');
+        textSpan.innerText = fullText;
+        const gapSpan = document.createElement('span');
+        gapSpan.style.display = 'inline-block';
+        gapSpan.style.width = gapWidth;
+        gapSpan.innerHTML = '&nbsp;';
+        wrapper.appendChild(textSpan);
+        wrapper.appendChild(gapSpan);
 
         outer.appendChild(wrapper);
         musicInfoDiv.appendChild(outer);
 
-        // 检测溢出并控制动画
+        let cloneAdded = false;
+
         const checkOverflow = () => {
-          if (wrapper.scrollWidth > outer.clientWidth) {
+          const containerWidth = outer.clientWidth;
+          const wrapperWidth = wrapper.scrollWidth;
+          const shouldScroll = wrapperWidth > containerWidth;
+
+          if (shouldScroll && !cloneAdded) {
+            // 需要滚动且尚无克隆 → 添加第二份内容
+            const textSpan2 = document.createElement('span');
+            textSpan2.innerText = fullText;
+            const gapSpan2 = document.createElement('span');
+            gapSpan2.style.display = 'inline-block';
+            gapSpan2.style.width = gapWidth;
+            gapSpan2.innerHTML = '&nbsp;';
+            wrapper.appendChild(textSpan2);
+            wrapper.appendChild(gapSpan2);
+            cloneAdded = true;
+            wrapper.style.animation = 'marquee 15s linear infinite';
+          } else if (!shouldScroll && cloneAdded) {
+            // 不需要滚动但有克隆 → 移除克隆，停止动画
+            while (wrapper.children.length > 2) {
+              wrapper.removeChild(wrapper.lastChild);
+            }
+            cloneAdded = false;
+            wrapper.style.animation = 'none';
+          } else if (shouldScroll && cloneAdded) {
+            // 已滚动且需要滚动，确保动画运行
             wrapper.style.animation = 'marquee 15s linear infinite';
           } else {
             wrapper.style.animation = 'none';
           }
         };
+
         checkOverflow();
 
         const resizeObserver = new ResizeObserver(checkOverflow);
         resizeObserver.observe(outer);
         window.addEventListener('resize', checkOverflow);
 
-        // 悬停暂停/恢复（不会瞬移）
+        // 悬停暂停/恢复
         outer.addEventListener('mouseenter', () => {
           if (wrapper.style.animation !== 'none') {
             wrapper.style.animationPlayState = 'paused';
