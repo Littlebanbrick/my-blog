@@ -40,8 +40,7 @@ function LinksPage() {
           id: 2,
           title: "Study Partners",
           description: "People who inspire me to learn more.",
-          links: [
-          ],
+          links: [],
         },
       ];
       setFriendGroups(groups);
@@ -50,15 +49,16 @@ function LinksPage() {
     fetchData();
   }, []);
 
-  // 跑马灯文本组件：悬停时滚动
+  // 跑马灯组件：动态检测溢出，仅在需要时添加副本
   const MarqueeText = ({ text, className }) => {
     const containerRef = useRef(null);
+    const wrapperRef = useRef(null);
     const [needsScroll, setNeedsScroll] = useState(false);
 
     useEffect(() => {
       const check = () => {
-        if (containerRef.current) {
-          setNeedsScroll(containerRef.current.scrollWidth > containerRef.current.clientWidth);
+        if (wrapperRef.current && containerRef.current) {
+          setNeedsScroll(wrapperRef.current.scrollWidth > containerRef.current.clientWidth);
         }
       };
       check();
@@ -69,17 +69,40 @@ function LinksPage() {
     return (
       <div
         ref={containerRef}
-        className={`marquee-container ${needsScroll ? "needs-scroll" : ""}`}
         style={{
           overflow: "hidden",
           whiteSpace: "nowrap",
-          textOverflow: "ellipsis",
+          width: "100%",
         }}
       >
-        <div className="marquee-content" style={{ display: "inline-block" }}>
-          {text}
-          {needsScroll && <span className="marquee-clone">{text}</span>}
+        <div
+          ref={wrapperRef}
+          style={{
+            display: "inline-block",
+            whiteSpace: "nowrap",
+            animation: needsScroll ? "marquee 15s linear infinite" : "none",
+          }}
+        >
+          {/* 基本内容：文本 + 空白间隔 */}
+          <span>{text}</span>
+          <span style={{ display: "inline-block", width: "2rem" }}>&nbsp;</span>
+          {/* 需要滚动时才添加第二份副本，实现无缝双内容 */}
+          {needsScroll && (
+            <>
+              <span>{text}</span>
+              <span style={{ display: "inline-block", width: "2rem" }}>&nbsp;</span>
+            </>
+          )}
         </div>
+        <style>{`
+          @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          div[style*="animation"]:hover {
+            animation-play-state: paused;
+          }
+        `}</style>
       </div>
     );
   };
@@ -117,8 +140,8 @@ function LinksPage() {
             </div>
           )}
 
-          {/* 友链分组 */}
-          {friendGroups.filter(g => g.links.length > 0).map((group) => (
+          {/* 友链分组（只渲染有链接的分组） */}
+          {friendGroups.filter((g) => g.links.length > 0).map((group) => (
             <div key={group.id} className="card mb-5">
               <div className="card-content">
                 <h2 className="title is-4 has-text-dark" style={{ marginBottom: "0.5rem" }}>
@@ -148,7 +171,7 @@ function LinksPage() {
                               </p>
                               {link.description && (
                                 <p className="is-size-7" style={{ marginTop: 0 }}>
-                                  <MarqueeText text={link.description} className="has-text-grey" />
+                                  <MarqueeText text={link.description} />
                                 </p>
                               )}
                             </div>
@@ -163,38 +186,6 @@ function LinksPage() {
           ))}
         </div>
       </section>
-
-      <style>{`
-        .marquee-container {
-          overflow: hidden;
-          white-space: nowrap;
-          text-overflow: ellipsis;
-          line-height: 1.6;          /* 增加行高，确保字母完全显示 */
-          padding-bottom: 2px;       /* 额外增加底部内边距，防止裁剪 */
-        }
-        .marquee-container .marquee-content {
-          display: inline-block;
-          white-space: nowrap;
-        }
-        .marquee-container.needs-scroll:hover .marquee-content {
-          animation: marquee 8s linear infinite;
-        }
-        @keyframes marquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
-        }
-        .marquee-container.needs-scroll .marquee-clone {
-          display: inline-block;
-          padding-left: 2rem;
-        }
-        .marquee-container:not(.needs-scroll) .marquee-clone {
-          display: none;
-        }
-      `}</style>
     </div>
   );
 }
