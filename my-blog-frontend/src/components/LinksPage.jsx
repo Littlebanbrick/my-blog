@@ -9,6 +9,7 @@ function LinksPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      // 修改为 Johnny Wang 的 profile
       const profileData = {
         avatar: "/myAvatar.jpg",
         name: "Johnny Wang",
@@ -16,6 +17,7 @@ function LinksPage() {
       };
       setProfile(profileData);
 
+      // 修改为 Johnny Wang 的 groups
       const groups = [
         {
           id: 1,
@@ -40,8 +42,7 @@ function LinksPage() {
           id: 2,
           title: "Study Partners",
           description: "People who inspire me to learn more.",
-          links: [
-          ],
+          links: [],
         },
       ];
       setFriendGroups(groups);
@@ -50,8 +51,8 @@ function LinksPage() {
     fetchData();
   }, []);
 
-  // 跑马灯文本组件：悬停时滚动
-  const MarqueeText = ({ text, className }) => {
+  // 跑马灯组件：只增加空白，其他逻辑保持不变
+  const MarqueeText = ({ text }) => {
     const containerRef = useRef(null);
     const [needsScroll, setNeedsScroll] = useState(false);
 
@@ -77,8 +78,14 @@ function LinksPage() {
         }}
       >
         <div className="marquee-content" style={{ display: "inline-block" }}>
-          {text}
-          {needsScroll && <span className="marquee-clone">{text}</span>}
+          <span>{text}</span>
+          <span style={{ display: "inline-block", width: "2rem" }}>&nbsp;</span>
+          {needsScroll && (
+            <>
+              <span>{text}</span>
+              <span style={{ display: "inline-block", width: "2rem" }}>&nbsp;</span>
+            </>
+          )}
         </div>
       </div>
     );
@@ -94,7 +101,6 @@ function LinksPage() {
         <div className="container">
           <h1 className="title is-2">Friends & Links</h1>
 
-          {/* 个人信息卡片 */}
           {profile && (
             <div className="card mb-5">
               <div className="card-content">
@@ -117,7 +123,6 @@ function LinksPage() {
             </div>
           )}
 
-          {/* 友链分组 */}
           {friendGroups.filter(g => g.links.length > 0).map((group) => (
             <div key={group.id} className="card mb-5">
               <div className="card-content">
@@ -148,7 +153,7 @@ function LinksPage() {
                               </p>
                               {link.description && (
                                 <p className="is-size-7" style={{ marginTop: 0 }}>
-                                  <MarqueeText text={link.description} className="has-text-grey" />
+                                  <MarqueeText text={link.description} />
                                 </p>
                               )}
                             </div>
@@ -169,8 +174,8 @@ function LinksPage() {
           overflow: hidden;
           white-space: nowrap;
           text-overflow: ellipsis;
-          line-height: 1.6;          /* 增加行高，确保字母完全显示 */
-          padding-bottom: 2px;       /* 额外增加底部内边距，防止裁剪 */
+          line-height: 1.6;
+          padding-bottom: 2px;
         }
         .marquee-container .marquee-content {
           display: inline-block;
@@ -180,12 +185,8 @@ function LinksPage() {
           animation: marquee 8s linear infinite;
         }
         @keyframes marquee {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
         }
         .marquee-container.needs-scroll .marquee-clone {
           display: inline-block;
