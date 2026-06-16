@@ -36,3 +36,5 @@ github-actions-key
 github-actions-key.pub
 
 server.py
+
+update.ps1
