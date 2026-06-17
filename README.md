@@ -1,5 +1,7 @@
 # Littlebanbrick's Full-Stack Blog
 
+> **Notice**: This dynamic blog is planned to cease maintenance in **August 2026**, while the source code will remain intact on **GitHub**.
+
 A modern, fully-featured personal blog platform built from scratch. It allows you to write and manage posts, interact with visitors through comments and likes, showcase your photography and projects, and even enjoy music integration – all while being easily deployable via Docker and automatically updated with CI/CD.
 
 ## Features
@@ -140,14 +142,10 @@ my-blog/
 | `FRONTEND_BASE_URL` | Yes       | Public URL of your frontend (used in email verification links)                 |
 | `ENV`               | Yes       | Set to `production` for HTTPS cookies, `development` otherwise                 |
 
-## Running Tests
-
-Tests are not yet implemented. The project is currently validated through manual endpoint testing.
-
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request. For major changes, discuss first.
 
 ## License
 
-This project is open source. A license will be chosen and added in the future.
+MIT license
